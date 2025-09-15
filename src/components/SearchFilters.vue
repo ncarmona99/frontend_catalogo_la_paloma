@@ -40,24 +40,7 @@
 
       <transition name="slide-up">
         <div v-show="mostrarFiltros" class="filtros-content">
-          <!-- Categoría -->
-          <div class="filtro-grupo">
-            <label class="filtro-label">Categoría</label>
-            <select
-              v-model="filtrosLocales.categoria"
-              class="filtro-select"
-              @change="aplicarFiltro('categoria', $event.target.value)"
-            >
-              <option value="">Todas las categorías</option>
-              <option
-                v-for="categoria in catalogo.categorias"
-                :key="categoria.id"
-                :value="categoria.id"
-              >
-                {{ categoria.nombre }}
-              </option>
-            </select>
-          </div>
+
 
           <!-- Marca -->
           <div class="filtro-grupo">
@@ -78,39 +61,32 @@
             </select>
           </div>
 
-          <!-- Disponibilidad -->
+          <!-- Temporada -->
           <div class="filtro-grupo">
-            <label class="filtro-label">Disponibilidad</label>
+            <label class="filtro-label">Temporada</label>
             <select
-              v-model="filtrosLocales.disponible"
+              v-model="filtrosLocales.temporada"
               class="filtro-select"
-              @change="aplicarFiltro('disponible', $event.target.value)"
+              @change="aplicarFiltro('temporada', $event.target.value)"
             >
-              <option value="">Todos</option>
-              <option value="true">En stock</option>
-              <option value="false">Agotado</option>
+              <option value="">Todas las temporadas</option>
+              <option
+                v-for="t in catalogo.temporadas"
+                :key="t.id"
+                :value="t.id"
+              >
+                {{ t.nombre }}
+              </option>
             </select>
           </div>
 
-          <!-- Destacados -->
-          <div class="filtro-grupo">
-            <label class="filtro-label">Destacados</label>
-            <select
-              v-model="filtrosLocales.destacado"
-              class="filtro-select"
-              @change="aplicarFiltro('destacado', $event.target.value)"
-            >
-              <option value="">Todos</option>
-              <option value="true">Solo destacados</option>
-              <option value="false">No destacados</option>
-            </select>
-          </div>
+
         </div>
       </transition>
     </div>
 
     <!-- Información de resultados -->
-    <div class="resultados-info">
+    <div v-if="showResultsInfo" class="resultados-info">
       <span class="resultados-texto">
         {{ catalogo.state.paginacion.total }} productos encontrados
       </span>
@@ -129,12 +105,18 @@
 import { ref, onMounted, watch } from 'vue'
 import { catalogo } from '@/stores/catalogo'
 
+// Props
+const props = defineProps({
+  showResultsInfo: {
+    type: Boolean,
+    default: true
+  }
+})
+
 const busquedaLocal = ref('')
 const filtrosLocales = ref({
-  categoria: '',
   marca: '',
-  disponible: '',
-  destacado: ''
+  temporada: ''
 })
 
 const mostrarFiltros = ref(false)
@@ -144,10 +126,8 @@ let searchTimeout = null
 onMounted(() => {
   busquedaLocal.value = catalogo.state.filtros.busqueda
   filtrosLocales.value = {
-    categoria: catalogo.state.filtros.categoria || '',
     marca: catalogo.state.filtros.marca || '',
-    disponible: catalogo.state.filtros.disponible !== null ? String(catalogo.state.filtros.disponible) : '',
-    destacado: catalogo.state.filtros.destacado !== null ? String(catalogo.state.filtros.destacado) : ''
+    temporada: catalogo.state.filtros.temporada || ''
   }
 })
 
@@ -169,15 +149,8 @@ const limpiarBusqueda = () => {
 const aplicarFiltro = (tipo, valor) => {
   let valorProcesado = valor || null
   
-  // Convertir strings de boolean a boolean real
-  if (tipo === 'disponible' || tipo === 'destacado') {
-    if (valor === 'true') valorProcesado = true
-    else if (valor === 'false') valorProcesado = false
-    else valorProcesado = null
-  }
-  
   // Convertir IDs a números
-  if ((tipo === 'categoria' || tipo === 'marca') && valor) {
+  if ((tipo === 'marca' || tipo === 'temporada') && valor) {
     valorProcesado = parseInt(valor)
   }
   
@@ -188,17 +161,20 @@ const aplicarFiltro = (tipo, valor) => {
 const limpiarTodosFiltros = () => {
   busquedaLocal.value = ''
   filtrosLocales.value = {
-    categoria: '',
     marca: '',
-    disponible: '',
-    destacado: ''
+    temporada: ''
   }
   catalogo.limpiarFiltros()
 }
 
-// Auto-expandir filtros en desktop
+// Auto-expandir filtros (siempre abierto en sidebar)
 const checkScreenSize = () => {
-  mostrarFiltros.value = window.innerWidth >= 1024
+  // En el sidebar, los filtros siempre están expandidos
+  if (props.showResultsInfo === false) {
+    mostrarFiltros.value = true
+  } else {
+    mostrarFiltros.value = window.innerWidth >= 1024
+  }
 }
 
 onMounted(() => {

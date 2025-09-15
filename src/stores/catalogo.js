@@ -1,28 +1,32 @@
 import { reactive } from 'vue'
+import { apiCall } from '@/config/api'
 
 // Estado global del catálogo
 const state = reactive({
   productos: [],
-  categorias: [],
+  familias: [],
   marcas: [],
+  proveedores: [],
+  temporadas: [],
+  ubicaciones: [],
+  estadisticas: {},
   loading: false,
+  loadingStartTime: null,
   error: null,
   
   // Filtros y búsqueda
   filtros: {
     busqueda: '',
-    categoria: null,
     marca: null,
-    precioMin: 0,
-    precioMax: 100000,
-    disponible: null,
-    destacado: null
+    temporada: null,
+    proveedor: null,
+    estado: null
   },
   
   // Paginación
   paginacion: {
     pagina: 1,
-    limite: 12,
+    limite: 30,
     total: 0,
     hasMore: true
   },
@@ -32,37 +36,7 @@ const state = reactive({
   modalAbierto: false
 })
 
-// API calls
-const API_URL = 'http://localhost:3000/api'
-
-async function apiCall(endpoint, options = {}) {
-  const url = `${API_URL}${endpoint}`
-  console.log('🌐 API Call:', url)
-  
-  const config = {
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    ...options
-  }
-
-  try {
-    const response = await fetch(url, config)
-    console.log('📡 Response status:', response.status)
-    
-    const data = await response.json()
-    console.log('📦 Response data:', data)
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'Error en el servidor')
-    }
-    
-    return data
-  } catch (error) {
-    console.error('❌ API Error:', error)
-    throw error
-  }
-}
+// API calls - ahora usando la configuración centralizada
 
 export const catalogo = {
   // Estado
@@ -73,24 +47,38 @@ export const catalogo = {
     return state.productos
   },
 
-  get categorias() {
-    return state.categorias
+  get familias() {
+    return state.familias
   },
 
   get marcas() {
     return state.marcas
   },
 
+  get proveedores() {
+    return state.proveedores
+  },
+
+  get temporadas() {
+    return state.temporadas
+  },
+
+  get ubicaciones() {
+    return state.ubicaciones
+  },
+
+  get estadisticas() {
+    return state.estadisticas
+  },
+
   get filtrosActivos() {
-    const { busqueda, categoria, marca, precioMin, precioMax, disponible, destacado } = state.filtros
+    const { busqueda, marca, temporada, proveedor, estado } = state.filtros
     return {
       ...(busqueda && { busqueda }),
-      ...(categoria && { categoria }),
       ...(marca && { marca }),
-      ...(precioMin > 0 && { precioMin }),
-      ...(precioMax < 100000 && { precioMax }),
-      ...(disponible !== null && { disponible }),
-      ...(destacado !== null && { destacado })
+      ...(temporada && { temporada }),
+      ...(proveedor && { proveedor }),
+      ...(estado && { estado })
     }
   },
 
@@ -98,26 +86,64 @@ export const catalogo = {
     return Object.keys(this.filtrosActivos).length
   },
 
+  get filtros() {
+    return state.filtros
+  },
+
+  get loadingStartTime() {
+    return state.loadingStartTime
+  },
+
+  get totalPaginas() {
+    const total = Math.ceil(state.paginacion.total / state.paginacion.limite)
+    return total
+  },
+
+  get paginaActual() {
+    return state.paginacion.pagina
+  },
+
+  get totalProductos() {
+    return state.paginacion.total
+  },
+
+  get pagination() {
+    return {
+      pagina: state.paginacion.pagina,
+      limite: state.paginacion.limite,
+      total: state.paginacion.total,
+      totalPaginas: Math.ceil(state.paginacion.total / state.paginacion.limite),
+      hasMore: state.paginacion.hasMore
+    }
+  },
+
   // Cargar datos iniciales
   async init() {
     try {
       state.loading = true
       
-      // Cargar categorías y marcas en paralelo
-      const [categoriasData, marcasData] = await Promise.all([
-        apiCall('/categorias'),
-        apiCall('/marcas')
+      // Cargar datos en paralelo
+      const [familiasData, marcasData, proveedoresData, ubicacionesData, estadisticasData, temporadasData] = await Promise.all([
+        apiCall('/catalogo/familias'),
+        apiCall('/catalogo/marcas'),
+        apiCall('/catalogo/proveedores'),
+        apiCall('/catalogo/ubicaciones'),
+        apiCall('/catalogo/estadisticas'),
+        apiCall('/catalogo/temporadas')
       ])
       
-      state.categorias = categoriasData.data || []
+      state.familias = familiasData.data || []
       state.marcas = marcasData.data || []
+      state.proveedores = proveedoresData.data || []
+      state.ubicaciones = ubicacionesData.data || []
+      state.estadisticas = estadisticasData.data || {}
+      state.temporadas = temporadasData.data || []
       
       // Cargar productos iniciales
       await this.cargarProductos(true)
       
     } catch (error) {
       state.error = error.message
-      console.error('Error inicializando catálogo:', error)
     } finally {
       state.loading = false
     }
@@ -126,13 +152,12 @@ export const catalogo = {
   // Cargar productos con filtros
   async cargarProductos(reset = false) {
     try {
-      console.log('🔄 Cargando productos, reset:', reset)
       state.loading = true
       
       if (reset) {
         state.paginacion.pagina = 1
-        state.productos = []
       }
+      // NO incrementar página aquí para scroll infinito
 
       // Construir query params
       const params = new URLSearchParams({
@@ -141,28 +166,22 @@ export const catalogo = {
         ...this.filtrosActivos
       })
 
-      console.log('📋 Parámetros:', Object.fromEntries(params))
-
-      const response = await apiCall(`/productos?${params}`)
+      const response = await apiCall(`/catalogo/productos?${params}`)
       
-      console.log('✅ Respuesta recibida:', response)
-      
+      // Agregar productos al final (scroll infinito)
       if (reset) {
         state.productos = response.data || []
       } else {
-        // Scroll infinito - agregar productos
-        state.productos.push(...(response.data || []))
+        state.productos = [...state.productos, ...(response.data || [])]
       }
       
-      // Actualizar paginación
+      // Actualizar paginación para scroll infinito
       state.paginacion.total = response.total || 0
       state.paginacion.hasMore = response.hasMore || false
-      
-      console.log(`📊 Total productos cargados: ${state.productos.length}`)
+      state.paginacion.pagina = response.pagination?.pagina || state.paginacion.pagina
       
     } catch (error) {
       state.error = error.message
-      console.error('❌ Error cargando productos:', error)
     } finally {
       state.loading = false
     }
@@ -170,10 +189,86 @@ export const catalogo = {
 
   // Cargar más productos (scroll infinito)
   async cargarMasProductos() {
-    if (!state.paginacion.hasMore || state.loading) return
+    console.log('🚀 cargarMasProductos llamado:', {
+      hasMore: state.paginacion.hasMore,
+      loading: state.loading,
+      paginaActual: state.paginacion.pagina,
+      productosCargados: state.productos.length
+    })
     
-    state.paginacion.pagina++
-    await this.cargarProductos(false)
+    if (!state.paginacion.hasMore || state.loading) {
+      console.log('❌ No se puede cargar más productos:', { hasMore: state.paginacion.hasMore, loading: state.loading })
+      return
+    }
+    
+    // Marcar tiempo de inicio para mostrar indicador si es necesario
+    const startTime = Date.now()
+    state.loadingStartTime = startTime
+    
+    try {
+      state.loading = true
+      
+      // Incrementar página para la siguiente carga
+      const siguientePagina = state.paginacion.pagina + 1
+      console.log('📄 Cargando página:', siguientePagina)
+      
+      // Construir query params
+      const params = new URLSearchParams({
+        pagina: siguientePagina,
+        limite: state.paginacion.limite,
+        ...this.filtrosActivos
+      })
+
+      console.log('🔗 Llamando API:', `/catalogo/productos?${params}`)
+      const response = await apiCall(`/catalogo/productos?${params}`)
+      
+      console.log('📦 Respuesta recibida:', {
+        productosNuevos: response.data?.length || 0,
+        total: response.total,
+        hasMore: response.hasMore
+      })
+      
+      if (response.data && response.data.length > 0) {
+        // Agregar productos al final sin resetear
+        state.productos.push(...response.data)
+        
+        // Actualizar paginación
+        state.paginacion.pagina = siguientePagina
+        state.paginacion.total = response.total || state.paginacion.total
+        state.paginacion.hasMore = response.hasMore || false
+        
+        console.log('✅ Productos agregados. Total actual:', state.productos.length)
+      } else {
+        // No hay más productos
+        state.paginacion.hasMore = false
+        console.log('🏁 No hay más productos para cargar')
+      }
+      
+    } catch (error) {
+      state.error = error.message
+    } finally {
+      const endTime = Date.now()
+      const loadingDuration = endTime - startTime
+      
+      // Si la carga tomó más de 1 segundo, mantener el indicador por un momento
+      if (loadingDuration > 1000) {
+        setTimeout(() => {
+          state.loading = false
+          state.loadingStartTime = null
+        }, 500)
+      } else {
+        state.loading = false
+        state.loadingStartTime = null
+      }
+    }
+  },
+
+  // Cambiar página (para paginación tradicional)
+  async cambiarPagina(nuevaPagina) {
+    if (nuevaPagina < 1 || nuevaPagina > this.totalPaginas) return
+    
+    state.paginacion.pagina = nuevaPagina
+    await this.cargarProductos(true)
   },
 
   // Búsqueda en tiempo real
@@ -192,12 +287,10 @@ export const catalogo = {
   async limpiarFiltros() {
     state.filtros = {
       busqueda: '',
-      categoria: null,
       marca: null,
-      precioMin: 0,
-      precioMax: 100000,
-      disponible: null,
-      destacado: null
+      temporada: null,
+      proveedor: null,
+      estado: null
     }
     await this.cargarProductos(true)
   },
@@ -206,11 +299,10 @@ export const catalogo = {
   async obtenerProducto(id) {
     try {
       state.loading = true
-      const response = await apiCall(`/productos/${id}`)
+      const response = await apiCall(`/catalogo/productos/${id}`)
       return response.data
     } catch (error) {
       state.error = error.message
-      console.error('Error obteniendo producto:', error)
       return null
     } finally {
       state.loading = false
@@ -237,5 +329,24 @@ export const catalogo = {
   // Limpiar errores
   clearError() {
     state.error = null
-  }
+  },
+
+  // Helpers para obtener información relacionada
+  getFamiliaById(id) {
+    return state.familias.find(f => f.id === id) || null
+  },
+
+  getMarcaById(id) {
+    return state.marcas.find(m => m.id === id) || null
+  },
+
+  getProveedorById(id) {
+    return state.proveedores.find(p => p.id === id) || null
+  },
+
+  getUbicacionByCodigo(codigo) {
+    return state.ubicaciones.find(u => u.codigo === codigo) || null
+  },
+
+
 }

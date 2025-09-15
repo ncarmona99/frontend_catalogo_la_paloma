@@ -11,7 +11,7 @@
       <div class="card card-elevated login-card">
         <!-- Header -->
         <div class="card-header text-center">
-            <img src="/public/logo.png" alt="La Paloma" class="logo-image">
+            <img src="../assets/logo.png" alt="La Paloma" class="logo-image">
           <p class="login-subtitle">Inicia sesión en tu cuenta</p>
         </div>
 

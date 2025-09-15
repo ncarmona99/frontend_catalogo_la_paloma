@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { apiCall } from '@/config/api'
 
 // Estado global simple
 const state = reactive({
@@ -16,28 +17,7 @@ if (token && user) {
   state.user = JSON.parse(user)
 }
 
-// API simple
-const API_URL = 'http://localhost:3000/api'
-
-async function apiCall(endpoint, options = {}) {
-  const url = `${API_URL}${endpoint}`
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(state.token && { Authorization: `Bearer ${state.token}` })
-    },
-    ...options
-  }
-
-  const response = await fetch(url, config)
-  const data = await response.json()
-  
-  if (!response.ok) {
-    throw new Error(data.message || 'Error en el servidor')
-  }
-  
-  return data
-}
+// API simple - ahora usando la configuración centralizada
 
 // Acciones
 export const auth = {
@@ -61,7 +41,10 @@ export const auth = {
     try {
       const response = await apiCall('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
 
       if (response.success) {
