@@ -1,7 +1,7 @@
 <template>
   <div class="admin-productos">
     <AdminNavbar />
-    
+
     <main class="main-content">
       <div class="container">
         <!-- Header -->
@@ -15,10 +15,21 @@
               Gestiona el catálogo completo de productos
             </p>
           </div>
-          <router-link to="/admin/productos/nuevo" class="btn btn-primary">
-            <i class="fas fa-plus"></i>
-            Nuevo Producto
-          </router-link>
+          <div class="header-actions">
+            <button
+              @click="openSyncModal"
+              class="btn btn-secondary"
+              :disabled="syncing"
+            >
+              <i v-if="syncing" class="fas fa-spinner fa-spin"></i>
+              <i v-else class="fas fa-sync-alt"></i>
+              {{ syncing ? "Sincronizando..." : "Sincronizar Productos" }}
+            </button>
+            <router-link to="/admin/productos/nuevo" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Nuevo Producto
+            </router-link>
+          </div>
         </div>
 
         <!-- Filtros -->
@@ -28,8 +39,8 @@
               <i class="fas fa-filter"></i>
               Filtros
             </h3>
-            <button 
-              class="btn btn-ghost btn-sm" 
+            <button
+              class="btn btn-ghost btn-sm"
               @click="clearFilters"
               :disabled="!hasActiveFilters"
             >
@@ -37,38 +48,46 @@
               Limpiar
             </button>
           </div>
-          
+
           <div class="filters-grid">
             <div class="filter-group">
               <label class="filter-label">Búsqueda</label>
-              <input 
-                v-model="filters.busqueda" 
-                type="text" 
+              <input
+                v-model="filters.busqueda"
+                type="text"
                 placeholder="Buscar por nombre, código, SKU..."
                 class="filter-input"
-              >
+              />
             </div>
-            
+
             <div class="filter-group">
               <label class="filter-label">Categoría</label>
               <select v-model="filters.familia" class="filter-select">
                 <option value="">Todas las categorías</option>
-                <option v-for="familia in familias" :key="familia.id" :value="familia.id">
+                <option
+                  v-for="familia in familias"
+                  :key="familia.id"
+                  :value="familia.id"
+                >
                   {{ familia.nombre }}
                 </option>
               </select>
             </div>
-            
+
             <div class="filter-group">
               <label class="filter-label">Marca</label>
               <select v-model="filters.marca" class="filter-select">
                 <option value="">Todas las marcas</option>
-                <option v-for="marca in marcas" :key="marca.id" :value="marca.id">
+                <option
+                  v-for="marca in marcas"
+                  :key="marca.id"
+                  :value="marca.id"
+                >
                   {{ marca.nombre }}
                 </option>
               </select>
             </div>
-            
+
             <div class="filter-group">
               <label class="filter-label">Estado</label>
               <select v-model="filters.estado" class="filter-select">
@@ -78,17 +97,21 @@
                 <option value="DESCONTINUADO">Descontinuado</option>
               </select>
             </div>
-            
+
             <div class="filter-group">
               <label class="filter-label">Temporada</label>
               <select v-model="filters.temporada" class="filter-select">
                 <option value="">Todas las temporadas</option>
-                <option v-for="temporada in temporadas" :key="temporada.id" :value="temporada.id">
+                <option
+                  v-for="temporada in temporadas"
+                  :key="temporada.id"
+                  :value="temporada.id"
+                >
                   {{ temporada.nombre }}
                 </option>
               </select>
             </div>
-            
+
             <div class="filter-group">
               <label class="filter-label">Venta Zonal</label>
               <select v-model="filters.zona" class="filter-select">
@@ -97,7 +120,7 @@
                 <option value="0">Solo No Zonal</option>
               </select>
             </div>
-            
+
             <div class="filter-group">
               <label class="filter-label">Stock</label>
               <select v-model="filters.stock" class="filter-select">
@@ -106,7 +129,6 @@
                 <option value="sin_stock">Solo sin Stock</option>
               </select>
             </div>
-            
           </div>
         </div>
 
@@ -138,17 +160,18 @@
             <h3 class="card-title">Lista de Productos</h3>
             <div class="card-actions">
               <div class="pagination-info">
-                Mostrando {{ paginationInfo.from }}-{{ paginationInfo.to }} de {{ totalProductos }}
+                Mostrando {{ paginationInfo.from }}-{{ paginationInfo.to }} de
+                {{ totalProductos }}
               </div>
             </div>
           </div>
-          
+
           <div class="card-body">
             <div v-if="loading" class="loading-state">
               <i class="fas fa-spinner fa-spin"></i>
               <span>Cargando productos...</span>
             </div>
-            
+
             <div v-else-if="productos.length === 0" class="empty-state">
               <i class="fas fa-box"></i>
               <h3>No hay productos</h3>
@@ -158,53 +181,151 @@
                 Crear Producto
               </router-link>
             </div>
-            
+
             <div v-else class="table-container">
               <table class="table">
                 <thead>
                   <tr>
-                    <th @click="sort('id')" class="sortable" :class="getSortClass('id')">
+                    <th
+                      @click="sort('id')"
+                      class="sortable"
+                      :class="getSortClass('id')"
+                    >
                       ID
                       <i class="fas fa-sort" v-if="sortField !== 'id'"></i>
-                      <i class="fas fa-sort-up" v-if="sortField === 'id' && sortOrder === 'asc'"></i>
-                      <i class="fas fa-sort-down" v-if="sortField === 'id' && sortOrder === 'desc'"></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="sortField === 'id' && sortOrder === 'asc'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="sortField === 'id' && sortOrder === 'desc'"
+                      ></i>
                     </th>
                     <th>Imagen</th>
-                    <th @click="sort('codigo')" class="sortable" :class="getSortClass('codigo')">
+                    <th
+                      @click="sort('codigo')"
+                      class="sortable"
+                      :class="getSortClass('codigo')"
+                    >
                       Código
                       <i class="fas fa-sort" v-if="sortField !== 'codigo'"></i>
-                      <i class="fas fa-sort-up" v-if="sortField === 'codigo' && sortOrder === 'asc'"></i>
-                      <i class="fas fa-sort-down" v-if="sortField === 'codigo' && sortOrder === 'desc'"></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="sortField === 'codigo' && sortOrder === 'asc'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="sortField === 'codigo' && sortOrder === 'desc'"
+                      ></i>
                     </th>
-                    <th @click="sort('descripcion')" class="sortable" :class="getSortClass('descripcion')">
+                    <th
+                      @click="sort('descripcion')"
+                      class="sortable"
+                      :class="getSortClass('descripcion')"
+                    >
                       Descripción
-                      <i class="fas fa-sort" v-if="sortField !== 'descripcion'"></i>
-                      <i class="fas fa-sort-up" v-if="sortField === 'descripcion' && sortOrder === 'asc'"></i>
-                      <i class="fas fa-sort-down" v-if="sortField === 'descripcion' && sortOrder === 'desc'"></i>
+                      <i
+                        class="fas fa-sort"
+                        v-if="sortField !== 'descripcion'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="
+                          sortField === 'descripcion' && sortOrder === 'asc'
+                        "
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="
+                          sortField === 'descripcion' && sortOrder === 'desc'
+                        "
+                      ></i>
                     </th>
-                    <th @click="sort('familia_nombre')" class="sortable" :class="getSortClass('familia_nombre')">
+                    <th
+                      @click="sort('familia_nombre')"
+                      class="sortable"
+                      :class="getSortClass('familia_nombre')"
+                    >
                       Categoría
-                      <i class="fas fa-sort" v-if="sortField !== 'familia_nombre'"></i>
-                      <i class="fas fa-sort-up" v-if="sortField === 'familia_nombre' && sortOrder === 'asc'"></i>
-                      <i class="fas fa-sort-down" v-if="sortField === 'familia_nombre' && sortOrder === 'desc'"></i>
+                      <i
+                        class="fas fa-sort"
+                        v-if="sortField !== 'familia_nombre'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="
+                          sortField === 'familia_nombre' && sortOrder === 'asc'
+                        "
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="
+                          sortField === 'familia_nombre' && sortOrder === 'desc'
+                        "
+                      ></i>
                     </th>
-                    <th @click="sort('marca_nombre')" class="sortable" :class="getSortClass('marca_nombre')">
+                    <th
+                      @click="sort('marca_nombre')"
+                      class="sortable"
+                      :class="getSortClass('marca_nombre')"
+                    >
                       Marca
-                      <i class="fas fa-sort" v-if="sortField !== 'marca_nombre'"></i>
-                      <i class="fas fa-sort-up" v-if="sortField === 'marca_nombre' && sortOrder === 'asc'"></i>
-                      <i class="fas fa-sort-down" v-if="sortField === 'marca_nombre' && sortOrder === 'desc'"></i>
+                      <i
+                        class="fas fa-sort"
+                        v-if="sortField !== 'marca_nombre'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="
+                          sortField === 'marca_nombre' && sortOrder === 'asc'
+                        "
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="
+                          sortField === 'marca_nombre' && sortOrder === 'desc'
+                        "
+                      ></i>
                     </th>
-                    <th @click="sort('stock_total')" class="sortable" :class="getSortClass('stock_total')">
+                    <th
+                      @click="sort('stock_total')"
+                      class="sortable"
+                      :class="getSortClass('stock_total')"
+                    >
                       Stock
-                      <i class="fas fa-sort" v-if="sortField !== 'stock_total'"></i>
-                      <i class="fas fa-sort-up" v-if="sortField === 'stock_total' && sortOrder === 'asc'"></i>
-                      <i class="fas fa-sort-down" v-if="sortField === 'stock_total' && sortOrder === 'desc'"></i>
+                      <i
+                        class="fas fa-sort"
+                        v-if="sortField !== 'stock_total'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="
+                          sortField === 'stock_total' && sortOrder === 'asc'
+                        "
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="
+                          sortField === 'stock_total' && sortOrder === 'desc'
+                        "
+                      ></i>
                     </th>
-                    <th @click="sort('estado')" class="sortable" :class="getSortClass('estado')">
+                    <th
+                      @click="sort('estado')"
+                      class="sortable"
+                      :class="getSortClass('estado')"
+                    >
                       Estado
                       <i class="fas fa-sort" v-if="sortField !== 'estado'"></i>
-                      <i class="fas fa-sort-up" v-if="sortField === 'estado' && sortOrder === 'asc'"></i>
-                      <i class="fas fa-sort-down" v-if="sortField === 'estado' && sortOrder === 'desc'"></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="sortField === 'estado' && sortOrder === 'asc'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="sortField === 'estado' && sortOrder === 'desc'"
+                      ></i>
                     </th>
                     <th>Acciones</th>
                   </tr>
@@ -214,32 +335,49 @@
                     <td>{{ producto.id }}</td>
                     <td>
                       <div class="product-image-cell">
-                        <div class="product-image" @click="openImageModal(producto)">
-                          <img 
-                            :src="producto.imagenes[0]?.url || '/images/placeholder-product.svg'" 
+                        <div
+                          class="product-image"
+                          @click="openImageModal(producto)"
+                        >
+                          <img
+                            :src="
+                              producto.imagenes[0]?.url ||
+                              '/images/placeholder-product.svg'
+                            "
                             :alt="producto.descripcion"
                             @error="handleImageError"
-                          >
+                          />
                           <div class="image-overlay">
                             <i class="fas fa-images"></i>
-                            <span class="image-count">{{ producto.imagenes?.length || 0 }}</span>
+                            <span class="image-count">{{
+                              producto.imagenes?.length || 0
+                            }}</span>
                           </div>
                         </div>
                       </div>
                     </td>
                     <td>
                       <div class="product-codes">
-                        <div class="code-main">{{ producto.codigo_producto }}</div>
-                        <div class="code-secondary">SKU: {{ producto.sku }}</div>
+                        <div class="code-main">
+                          {{ producto.codigo_producto }}
+                        </div>
+                        <div class="code-secondary">
+                          SKU: {{ producto.sku }}
+                        </div>
                       </div>
                     </td>
                     <td>
                       <div class="product-description">
-                        <div class="description-text">{{ producto.descripcion }}</div>
+                        <div class="description-text">
+                          {{ producto.descripcion }}
+                        </div>
                       </div>
                     </td>
                     <td>
-                      <span v-if="producto.familia" class="badge badge-secondary">
+                      <span
+                        v-if="producto.familia"
+                        class="badge badge-secondary"
+                      >
                         {{ producto.familia.nombre }}
                       </span>
                       <span v-else class="text-muted">-</span>
@@ -253,54 +391,72 @@
                     <td>
                       <div class="stock-info">
                         <div class="stock-main">
-                          <span class="stock-value" :class="getStockClass(producto.stock)">
+                          <span
+                            class="stock-value"
+                            :class="getStockClass(producto.stock)"
+                          >
                             {{ producto.stock?.disponible || 0 }} disp.
                           </span>
                           <span class="stock-total">
                             / {{ producto.stock?.total || 0 }} total
                           </span>
                         </div>
-                        <div v-if="producto.stock?.reservado > 0" class="stock-reserved">
+                        <div
+                          v-if="producto.stock?.reservado > 0"
+                          class="stock-reserved"
+                        >
                           {{ producto.stock.reservado }} reservado
                         </div>
-                        <div v-if="!producto.stock?.hay_stock" class="stock-warning">
+                        <div
+                          v-if="!producto.stock?.hay_stock"
+                          class="stock-warning"
+                        >
                           <i class="fas fa-exclamation-triangle"></i>
                           Agotado
                         </div>
-                        <div v-if="producto.stock?.fecha_actualizacion" class="stock-updated">
-                          Act: {{ formatStockDate(producto.stock.fecha_actualizacion) }}
+                        <div
+                          v-if="producto.stock?.fecha_actualizacion"
+                          class="stock-updated"
+                        >
+                          Act:
+                          {{
+                            formatStockDate(producto.stock.fecha_actualizacion)
+                          }}
                         </div>
                       </div>
                     </td>
                     <td>
-                      <span class="badge" :class="getEstadoClass(producto.estado)">
+                      <span
+                        class="badge"
+                        :class="getEstadoClass(producto.estado)"
+                      >
                         {{ producto.estado }}
                       </span>
                     </td>
                     <td>
                       <div class="action-buttons">
-                        <button 
+                        <button
                           class="btn btn-sm btn-ghost"
                           @click="openImageModal(producto)"
                           title="Gestionar imágenes"
                         >
                           <i class="fas fa-images"></i>
                         </button>
-                        <button 
+                        <button
                           @click="openEditModal(producto)"
                           class="btn btn-sm btn-ghost"
                           title="Editar"
                         >
                           <i class="fas fa-edit"></i>
                         </button>
-                        <button 
+                        <button
                           class="btn btn-sm btn-ghost"
                           @click="viewProducto(producto)"
                           title="Ver detalles"
                         >
                           <i class="fas fa-eye"></i>
                         </button>
-                        <button 
+                        <button
                           class="btn btn-sm btn-ghost btn-danger"
                           @click="deleteProducto(producto)"
                           title="Eliminar"
@@ -314,11 +470,11 @@
               </table>
             </div>
           </div>
-          
+
           <!-- Paginación -->
           <div v-if="totalPaginas > 1" class="card-footer">
             <div class="pagination">
-              <button 
+              <button
                 class="btn btn-ghost btn-sm"
                 :disabled="pagina <= 1"
                 @click="changePage(pagina - 1)"
@@ -326,10 +482,10 @@
                 <i class="fas fa-chevron-left"></i>
                 Anterior
               </button>
-              
+
               <div class="pagination-pages">
-                <button 
-                  v-for="page in visiblePages" 
+                <button
+                  v-for="page in visiblePages"
                   :key="page"
                   class="btn btn-sm"
                   :class="page === pagina ? 'btn-primary' : 'btn-ghost'"
@@ -338,8 +494,8 @@
                   {{ page }}
                 </button>
               </div>
-              
-              <button 
+
+              <button
                 class="btn btn-ghost btn-sm"
                 :disabled="pagina >= totalPaginas"
                 @click="changePage(pagina + 1)"
@@ -371,14 +527,16 @@
           <div class="product-info">
             <div class="product-details">
               <span class="product-id">ID: {{ selectedProduct?.id }}</span>
-              <span class="product-code">{{ selectedProduct?.codigo_producto }}</span>
+              <span class="product-code">{{
+                selectedProduct?.codigo_producto
+              }}</span>
             </div>
           </div>
 
           <!-- Tabs para tipos de vista -->
           <div class="image-tabs">
-            <button 
-              v-for="tipo in tiposVista" 
+            <button
+              v-for="tipo in tiposVista"
               :key="tipo.id"
               class="tab-button"
               :class="{ active: activeTab === tipo.id }"
@@ -386,7 +544,9 @@
             >
               <i :class="tipo.icono"></i>
               {{ tipo.nombre }}
-              <span class="image-badge">{{ getImageCountByType(tipo.id) }}</span>
+              <span class="image-badge">{{
+                getImageCountByType(tipo.id)
+              }}</span>
             </button>
           </div>
 
@@ -397,25 +557,26 @@
                 <h4 class="section-title">
                   {{ getTipoNombre(activeTab) }}
                 </h4>
-                <button 
-                  class="btn btn-primary btn-sm"
-                  @click="openUploadModal"
-                >
+                <button class="btn btn-primary btn-sm" @click="openUploadModal">
                   <i class="fas fa-upload"></i>
                   Subir Imagen
                 </button>
               </div>
 
               <div class="images-grid">
-                <div 
-                  v-for="imagen in getImagesByType(activeTab)" 
+                <div
+                  v-for="imagen in getImagesByType(activeTab)"
                   :key="imagen.id"
                   class="image-item"
                 >
                   <div class="image-preview">
-                    <img :src="imagen.url" :alt="imagen.alt_text" @error="handleImageError">
+                    <img
+                      :src="imagen.url"
+                      :alt="imagen.alt_text"
+                      @error="handleImageError"
+                    />
                     <div class="image-actions">
-                      <button 
+                      <button
                         class="btn btn-sm btn-danger"
                         @click="deleteImage(imagen)"
                         title="Eliminar imagen"
@@ -430,10 +591,16 @@
                 </div>
 
                 <!-- Placeholder cuando no hay imágenes -->
-                <div v-if="getImagesByType(activeTab).length === 0" class="no-images">
+                <div
+                  v-if="getImagesByType(activeTab).length === 0"
+                  class="no-images"
+                >
                   <i class="fas fa-image"></i>
-                  <p>No hay imágenes de tipo {{ getTipoNombre(activeTab).toLowerCase() }}</p>
-                  <button 
+                  <p>
+                    No hay imágenes de tipo
+                    {{ getTipoNombre(activeTab).toLowerCase() }}
+                  </p>
+                  <button
                     class="btn btn-primary btn-sm"
                     @click="openUploadModal"
                   >
@@ -465,40 +632,42 @@
           <form @submit.prevent="uploadImage" class="upload-form">
             <div class="form-group">
               <label class="form-label">Archivo de Imagen *</label>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 ref="fileInput"
                 @change="handleFileSelect"
                 accept="image/*"
                 class="form-input-file"
                 required
-              >
+              />
               <div class="file-info" v-if="selectedFile">
                 <i class="fas fa-file-image"></i>
                 <span>{{ selectedFile.name }}</span>
-                <span class="file-size">({{ formatFileSize(selectedFile.size) }})</span>
+                <span class="file-size"
+                  >({{ formatFileSize(selectedFile.size) }})</span
+                >
               </div>
             </div>
 
             <div class="form-group">
               <label class="form-label">Orden</label>
-              <input 
+              <input
                 v-model.number="uploadData.orden"
-                type="number" 
+                type="number"
                 class="form-input"
                 min="1"
                 placeholder="1"
-              >
+              />
             </div>
 
             <div class="form-group">
               <label class="form-label">Texto Alternativo</label>
-              <input 
+              <input
                 v-model="uploadData.alt_text"
-                type="text" 
+                type="text"
                 class="form-input"
                 placeholder="Descripción de la imagen"
-              >
+              />
             </div>
           </form>
         </div>
@@ -507,13 +676,13 @@
           <button @click="closeUploadModal" class="btn btn-ghost">
             Cancelar
           </button>
-          <button 
-            @click="uploadImage" 
+          <button
+            @click="uploadImage"
             class="btn btn-primary"
             :disabled="uploading || !selectedFile"
           >
             <i v-if="uploading" class="fas fa-spinner fa-spin"></i>
-            {{ uploading ? 'Subiendo...' : 'Subir Imagen' }}
+            {{ uploading ? "Subiendo..." : "Subir Imagen" }}
           </button>
         </div>
       </div>
@@ -541,58 +710,40 @@
               <i class="fas fa-info-circle"></i>
               Información Básica
             </h3>
-            
+
             <div class="form-grid">
               <div class="form-group">
-                <label for="edit_codigo_producto" class="form-label">Código del Producto *</label>
-                <input 
+                <label for="edit_codigo_producto" class="form-label"
+                  >Código del Producto *</label
+                >
+                <input
                   id="edit_codigo_producto"
-                  v-model="editFormData.codigo_producto" 
-                  type="text" 
+                  v-model="editFormData.codigo_producto"
+                  type="text"
                   class="form-input"
                   placeholder="Ej: PROD001"
                   required
-                >
+                />
               </div>
-              
+
               <div class="form-group">
                 <label for="edit_sku" class="form-label">SKU</label>
-                <input 
+                <input
                   id="edit_sku"
-                  v-model="editFormData.sku" 
-                  type="text" 
+                  v-model="editFormData.sku"
+                  type="text"
                   class="form-input"
                   placeholder="Ej: SKU123"
-                >
+                />
               </div>
-              
-              <div class="form-group">
-                <label for="edit_plu" class="form-label">PLU</label>
-                <input 
-                  id="edit_plu"
-                  v-model="editFormData.plu" 
-                  type="text" 
-                  class="form-input"
-                  placeholder="Ej: PLU456"
-                >
-              </div>
-              
-              <div class="form-group">
-                <label for="edit_codigo_barras" class="form-label">Código de Barras</label>
-                <input 
-                  id="edit_codigo_barras"
-                  v-model="editFormData.codigo_barras" 
-                  type="text" 
-                  class="form-input"
-                  placeholder="Ej: 1234567890123"
-                >
-              </div>
-              
+
               <div class="form-group form-group-full">
-                <label for="edit_descripcion" class="form-label">Descripción *</label>
-                <textarea 
+                <label for="edit_descripcion" class="form-label"
+                  >Descripción *</label
+                >
+                <textarea
                   id="edit_descripcion"
-                  v-model="editFormData.descripcion" 
+                  v-model="editFormData.descripcion"
                   class="form-textarea"
                   placeholder="Descripción detallada del producto..."
                   rows="3"
@@ -608,37 +759,37 @@
               <i class="fas fa-tags"></i>
               Clasificación
             </h3>
-            
+
             <div class="form-grid">
               <div class="form-group">
                 <label for="edit_familia_id" class="form-label">Familia</label>
-                <select 
+                <select
                   id="edit_familia_id"
-                  v-model="editFormData.familia_id" 
+                  v-model="editFormData.familia_id"
                   class="form-select"
                 >
                   <option value="">Seleccionar familia...</option>
-                  <option 
-                    v-for="familia in familias" 
-                    :key="familia.id" 
+                  <option
+                    v-for="familia in familias"
+                    :key="familia.id"
                     :value="familia.id"
                   >
                     {{ familia.nombre }}
                   </option>
                 </select>
               </div>
-              
+
               <div class="form-group">
                 <label for="edit_marca_id" class="form-label">Marca</label>
-                <select 
+                <select
                   id="edit_marca_id"
-                  v-model="editFormData.marca_id" 
+                  v-model="editFormData.marca_id"
                   class="form-select"
                 >
                   <option value="">Seleccionar marca...</option>
-                  <option 
-                    v-for="marca in marcas" 
-                    :key="marca.id" 
+                  <option
+                    v-for="marca in marcas"
+                    :key="marca.id"
                     :value="marca.id"
                   >
                     {{ marca.nombre }}
@@ -647,13 +798,17 @@
               </div>
 
               <div class="form-group">
-                <label for="edit_temporadas" class="form-label">Temporadas</label>
+                <label for="edit_temporadas" class="form-label"
+                  >Temporadas</label
+                >
                 <div class="temporadas-selector">
-                  <div 
-                    v-for="temporada in temporadas" 
+                  <div
+                    v-for="temporada in temporadas"
                     :key="temporada.id"
                     class="temporada-chip"
-                    :class="{ 'selected': editFormData.temporadas?.includes(temporada.id) }"
+                    :class="{
+                      selected: editFormData.temporadas?.includes(temporada.id),
+                    }"
                     @click="toggleTemporada(temporada.id)"
                   >
                     {{ temporada.nombre }}
@@ -669,13 +824,13 @@
               <i class="fas fa-toggle-on"></i>
               Estado
             </h3>
-            
+
             <div class="form-grid">
               <div class="form-group">
                 <label for="edit_estado" class="form-label">Estado *</label>
-                <select 
+                <select
                   id="edit_estado"
-                  v-model="editFormData.estado" 
+                  v-model="editFormData.estado"
                   class="form-select"
                   required
                 >
@@ -684,35 +839,187 @@
                   <option value="SUSPENDIDO">Suspendido</option>
                 </select>
               </div>
-              
-              <div class="form-group">
-                <div class="checkbox-group">
-                  <label class="checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      v-model="editFormData.disponible_web"
-                      class="checkbox-input"
-                    >
-                    <span class="checkbox-text">Disponible en web</span>
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
         </form>
       </div>
 
       <div class="modal-footer">
-        <button @click="closeEditModal" class="btn btn-ghost">
-          Cancelar
-        </button>
-        <button 
-          @click="saveProducto" 
+        <button @click="closeEditModal" class="btn btn-ghost">Cancelar</button>
+        <button
+          @click="saveProducto"
           class="btn btn-primary"
           :disabled="saving"
         >
           <i v-if="saving" class="fas fa-spinner fa-spin"></i>
-          {{ saving ? 'Guardando...' : 'Actualizar Producto' }}
+          {{ saving ? "Guardando..." : "Actualizar Producto" }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Sincronización de Productos -->
+  <div v-if="syncModalOpen" class="modal-overlay" @click="closeSyncModal">
+    <div class="modal-container sync-modal" @click.stop>
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-sync-alt"></i>
+          Sincronizar Productos
+        </h2>
+        <button @click="closeSyncModal" class="btn btn-ghost btn-sm">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div v-if="!syncData" class="sync-info">
+          <div class="sync-description">
+            <p>
+              Esta función comparará los productos entre la base de datos
+              principal y la base de datos de stock, y agregará automáticamente
+              cualquier producto que esté presente en stock pero ausente en el
+              catálogo principal.
+            </p>
+            <div class="sync-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>
+                Solo se agregarán productos nuevos. Los productos existentes no
+                serán modificados.
+              </span>
+            </div>
+          </div>
+
+          <div class="sync-actions">
+            <button
+              @click="checkSyncData"
+              class="btn btn-primary"
+              :disabled="loadingSync"
+            >
+              <i v-if="loadingSync" class="fas fa-spinner fa-spin"></i>
+              <i v-else class="fas fa-search"></i>
+              {{ loadingSync ? "Analizando..." : "Analizar Diferencias" }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="syncData && !syncing" class="sync-results">
+          <div class="sync-stats">
+            <div class="stat-card">
+              <div class="stat-value">{{ syncData.totalMainProducts }}</div>
+              <div class="stat-label">Productos en Catálogo</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ syncData.totalStockProducts }}</div>
+              <div class="stat-label">Productos en Stock</div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-value">{{ syncData.missingProducts }}</div>
+              <div class="stat-label">Productos a Sincronizar</div>
+            </div>
+          </div>
+
+          <div v-if="syncData.missingProducts > 0" class="sync-preview">
+            <h4>Productos que serán agregados:</h4>
+            <div class="products-preview">
+              <div
+                v-for="product in syncData.productsToSync.slice(0, 5)"
+                :key="product.codigo_producto"
+                class="preview-item"
+              >
+                <strong>{{ product.codigo_producto }}</strong>
+                <span>{{ product.descripcion || "Sin descripción" }}</span>
+              </div>
+              <div
+                v-if="syncData.productsToSync.length > 5"
+                class="preview-more"
+              >
+                ... y {{ syncData.productsToSync.length - 5 }} productos más
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="sync-up-to-date">
+            <i class="fas fa-check-circle"></i>
+            <span
+              >¡Tu catálogo está actualizado! No hay productos para
+              sincronizar.</span
+            >
+          </div>
+        </div>
+
+        <div v-if="syncing" class="sync-progress">
+          <div class="progress-indicator">
+            <i class="fas fa-sync-alt fa-spin"></i>
+            <span>Sincronizando productos...</span>
+          </div>
+          <p>Por favor espera mientras se agregan los productos faltantes.</p>
+        </div>
+
+        <div v-if="syncResult" class="sync-complete">
+          <div
+            class="result-header"
+            :class="{ success: syncResult.success, error: !syncResult.success }"
+          >
+            <i
+              :class="
+                syncResult.success
+                  ? 'fas fa-check-circle'
+                  : 'fas fa-exclamation-circle'
+              "
+            ></i>
+            <span>{{ syncResult.message }}</span>
+          </div>
+
+          <div
+            v-if="syncResult.success && syncResult.data"
+            class="result-details"
+          >
+            <p>
+              <strong>Productos sincronizados:</strong>
+              {{ syncResult.data.syncedProducts }}
+            </p>
+            <p v-if="syncResult.data.errors > 0">
+              <strong>Errores:</strong> {{ syncResult.data.errors }}
+            </p>
+            <div
+              v-if="
+                syncResult.data.errorDetails &&
+                syncResult.data.errorDetails.length > 0
+              "
+              class="error-details"
+            >
+              <h5>Detalles de errores:</h5>
+              <ul>
+                <li v-for="error in syncResult.data.errorDetails" :key="error">
+                  {{ error }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button @click="closeSyncModal" class="btn btn-ghost">
+          {{ syncing ? "Cerrar" : "Cancelar" }}
+        </button>
+        <button
+          v-if="
+            syncData && syncData.missingProducts > 0 && !syncing && !syncResult
+          "
+          @click="performSync"
+          class="btn btn-primary"
+        >
+          <i class="fas fa-sync-alt"></i>
+          Sincronizar {{ syncData.missingProducts }} Productos
+        </button>
+        <button
+          v-if="syncResult && syncResult.success"
+          @click="refreshAfterSync"
+          class="btn btn-success"
+        >
+          <i class="fas fa-refresh"></i>
+          Actualizar Lista
         </button>
       </div>
     </div>
@@ -720,557 +1027,648 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import AdminNavbar from '@/components/AdminNavbar.vue'
-import { apiCall } from '@/config/api'
+import { ref, computed, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
+import AdminNavbar from "@/components/AdminNavbar.vue";
+import { apiCall } from "@/config/api";
 
-const router = useRouter()
+const router = useRouter();
 
 // Estado reactivo
-const productos = ref([])
-const familias = ref([])
-const marcas = ref([])
-const temporadas = ref([])
-const loading = ref(false)
-const estadisticas = ref({ productos_activos: 0, productos_sin_stock: 0 })
-const pagina = ref(1)
-const limite = ref(20)
-const totalProductos = ref(0)
-const totalPaginas = ref(0)
+const productos = ref([]);
+const familias = ref([]);
+const marcas = ref([]);
+const temporadas = ref([]);
+const loading = ref(false);
+const estadisticas = ref({ productos_activos: 0, productos_sin_stock: 0 });
+const pagina = ref(1);
+const limite = ref(20);
+const totalProductos = ref(0);
+const totalPaginas = ref(0);
 
 // Estado para ordenamiento
-const sortField = ref('id')
-const sortOrder = ref('desc')
+const sortField = ref("id");
+const sortOrder = ref("desc");
 
 const filters = ref({
-  busqueda: '',
-  familia: '',
-  marca: '',
-  estado: '',
-  temporada: '',
-  zona: '',
-  stock: ''
-})
+  busqueda: "",
+  familia: "",
+  marca: "",
+  estado: "",
+  temporada: "",
+  zona: "",
+  stock: "",
+});
 
 // Estado para gestión de imágenes
-const showImageModal = ref(false)
-const showUploadModal = ref(false)
-const selectedProduct = ref(null)
-const activeTab = ref('principal')
-const uploading = ref(false)
-const selectedFile = ref(null)
-const fileInput = ref(null)
+const showImageModal = ref(false);
+const showUploadModal = ref(false);
+const selectedProduct = ref(null);
+const activeTab = ref("principal");
+const uploading = ref(false);
+const selectedFile = ref(null);
+const fileInput = ref(null);
 
 const uploadData = ref({
   orden: 1,
-  alt_text: ''
-})
+  alt_text: "",
+});
 
 // Estado para modal de edición
-const editModalOpen = ref(false)
-const editingProduct = ref(null)
-const saving = ref(false)
+const editModalOpen = ref(false);
+const editingProduct = ref(null);
+const saving = ref(false);
 
 const editFormData = ref({
-  codigo_producto: '',
-  sku: '',
-  plu: '',
-  codigo_barras: '',
-  descripcion: '',
-  familia_id: '',
-  marca_id: '',
-  estado: 'ACTIVO',
-  disponible_web: false,
-  temporadas: []
-})
+  codigo_producto: "",
+  sku: "",
+  descripcion: "",
+  familia_id: "",
+  marca_id: "",
+  estado: "ACTIVO",
+  temporadas: [],
+});
+
+// Estado para modal de sincronización
+const syncModalOpen = ref(false);
+const syncing = ref(false);
+const loadingSync = ref(false);
+const syncData = ref(null);
+const syncResult = ref(null);
 
 // Tipos de vista disponibles
 const tiposVista = ref([
-  { id: 'principal', nombre: 'Principal', icono: 'fas fa-eye' },
-  { id: 'perspectiva', nombre: 'Perspectiva', icono: 'fas fa-cube' },
-  { id: 'frente', nombre: 'Frente', icono: 'fas fa-square' },
-  { id: 'atras', nombre: 'Atrás', icono: 'fas fa-square' },
-  { id: 'lateral', nombre: 'Lateral', icono: 'fas fa-square' },
-  { id: 'superior', nombre: 'Superior', icono: 'fas fa-square' }
-])
+  { id: "principal", nombre: "Principal", icono: "fas fa-eye" },
+  { id: "perspectiva", nombre: "Perspectiva", icono: "fas fa-cube" },
+  { id: "frente", nombre: "Frente", icono: "fas fa-square" },
+  { id: "atras", nombre: "Atrás", icono: "fas fa-square" },
+  { id: "lateral", nombre: "Lateral", icono: "fas fa-square" },
+  { id: "superior", nombre: "Superior", icono: "fas fa-square" },
+]);
 
 // Computed
 const hasActiveFilters = computed(() => {
-  return Object.values(filters.value).some(value => 
-    value !== ''
-  )
-})
+  return Object.values(filters.value).some((value) => value !== "");
+});
 
 const productosActivos = computed(() => {
-  return estadisticas.value?.productos_activos || 0
-})
+  return estadisticas.value?.productos_activos || 0;
+});
 
 const paginationInfo = computed(() => {
-  const from = (pagina.value - 1) * limite.value + 1
-  const to = Math.min(pagina.value * limite.value, totalProductos.value)
-  return { from, to }
-})
+  const from = (pagina.value - 1) * limite.value + 1;
+  const to = Math.min(pagina.value * limite.value, totalProductos.value);
+  return { from, to };
+});
 
 const visiblePages = computed(() => {
-  const pages = []
-  const start = Math.max(1, pagina.value - 2)
-  const end = Math.min(totalPaginas.value, pagina.value + 2)
-  
+  const pages = [];
+  const start = Math.max(1, pagina.value - 2);
+  const end = Math.min(totalPaginas.value, pagina.value + 2);
+
   for (let i = start; i <= end; i++) {
-    pages.push(i)
+    pages.push(i);
   }
-  
-  return pages
-})
+
+  return pages;
+});
 
 // Métodos
 const loadProductos = async () => {
-  loading.value = true
+  loading.value = true;
   try {
     const params = {
       pagina: pagina.value,
       limite: limite.value,
       sortField: sortField.value,
       sortOrder: sortOrder.value,
-      ...filters.value
-    }
-    
-    const response = await apiCall('/admin/productos?' + new URLSearchParams(params))
-    
+      ...filters.value,
+    };
+
+    const response = await apiCall(
+      "/admin/productos?" + new URLSearchParams(params)
+    );
+
     if (response.success) {
-      console.log('📊 Primeros 3 productos recibidos:', response.data.slice(0, 3).map(p => ({ id: p.id, codigo: p.codigo_producto, precio: p.valor_web, stock: p.stock_total })))
-      productos.value = response.data || []
-      totalProductos.value = response.total || 0
-      totalPaginas.value = response.pagination?.totalPaginas || 0
+      console.log(
+        "📊 Primeros 3 productos recibidos:",
+        response.data.slice(0, 3).map((p) => ({
+          id: p.id,
+          codigo: p.codigo_producto,
+          precio: p.valor_web,
+          stock: p.stock_total,
+        }))
+      );
+      productos.value = response.data || [];
+      totalProductos.value = response.total || 0;
+      totalPaginas.value = response.pagination?.totalPaginas || 0;
     } else {
-      productos.value = []
-      totalProductos.value = 0
-      totalPaginas.value = 0
+      productos.value = [];
+      totalProductos.value = 0;
+      totalPaginas.value = 0;
     }
   } catch (error) {
-    console.error('❌ Error cargando productos:', error)
-    productos.value = []
-    totalProductos.value = 0
-    totalPaginas.value = 0
+    console.error("❌ Error cargando productos:", error);
+    productos.value = [];
+    totalProductos.value = 0;
+    totalPaginas.value = 0;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const loadEstadisticas = async () => {
   try {
-    const response = await apiCall('/admin/estadisticas')
+    const response = await apiCall("/admin/estadisticas");
     if (response.success) {
-      estadisticas.value = response.estadisticas || { productos_activos: 0, productos_sin_stock: 0 }
+      estadisticas.value = response.estadisticas || {
+        productos_activos: 0,
+        productos_sin_stock: 0,
+      };
     }
   } catch (error) {
-    console.error('❌ Error cargando estadísticas:', error)
-    estadisticas.value = { productos_activos: 0, productos_sin_stock: 0 }
+    console.error("❌ Error cargando estadísticas:", error);
+    estadisticas.value = { productos_activos: 0, productos_sin_stock: 0 };
   }
-}
+};
 
 const loadFamilias = async () => {
   try {
-    const response = await apiCall('/catalogo/familias')
+    const response = await apiCall("/catalogo/familias");
     if (response.success) {
-      familias.value = response.data || []
+      familias.value = response.data || [];
     }
   } catch (error) {
-    console.error('Error cargando familias:', error)
-    familias.value = []
+    console.error("Error cargando familias:", error);
+    familias.value = [];
   }
-}
+};
 
 const loadMarcas = async () => {
   try {
-    const response = await apiCall('/catalogo/marcas')
+    const response = await apiCall("/catalogo/marcas");
     if (response.success) {
-      marcas.value = response.data || []
+      marcas.value = response.data || [];
     }
   } catch (error) {
-    console.error('Error cargando marcas:', error)
-    marcas.value = []
+    console.error("Error cargando marcas:", error);
+    marcas.value = [];
   }
-}
+};
 
 const loadTemporadas = async () => {
   try {
-    const response = await apiCall('/admin/temporadas')
+    const response = await apiCall("/admin/temporadas");
     if (response.success) {
-      temporadas.value = response.data || []
+      temporadas.value = response.data || [];
     }
   } catch (error) {
-    console.error('Error cargando temporadas:', error)
-    temporadas.value = []
+    console.error("Error cargando temporadas:", error);
+    temporadas.value = [];
   }
-}
+};
 
 const changePage = (newPage) => {
-  pagina.value = newPage
-}
+  pagina.value = newPage;
+};
 
 // Funciones de ordenamiento
 const sort = (field) => {
   if (sortField.value === field) {
     // Si ya estamos ordenando por este campo, cambiar dirección
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
   } else {
     // Si es un campo nuevo, ordenar ascendente por defecto
-    sortField.value = field
-    sortOrder.value = 'asc'
+    sortField.value = field;
+    sortOrder.value = "asc";
   }
-  
+
   // Resetear a la primera página - NO llamar loadProductos() aquí porque el watcher lo hará
-  pagina.value = 1
-}
+  pagina.value = 1;
+};
 
 const getSortClass = (field) => {
-  if (sortField.value !== field) return ''
-  return sortOrder.value === 'asc' ? 'sort-asc' : 'sort-desc'
-}
+  if (sortField.value !== field) return "";
+  return sortOrder.value === "asc" ? "sort-asc" : "sort-desc";
+};
 
 const clearFilters = () => {
   filters.value = {
-    busqueda: '',
-    familia: '',
-    marca: '',
-    estado: '',
-    temporada: '',
-    zona: '',
-    stock: ''
-  }
-  pagina.value = 1
-}
+    busqueda: "",
+    familia: "",
+    marca: "",
+    estado: "",
+    temporada: "",
+    zona: "",
+    stock: "",
+  };
+  pagina.value = 1;
+};
 
 const viewProducto = (producto) => {
   // TODO: Implementar vista detallada del producto
-  console.log('Ver producto:', producto.id)
-}
+  console.log("Ver producto:", producto.id);
+};
 
 const deleteProducto = async (producto) => {
-  if (!confirm(`¿Estás seguro de que quieres eliminar el producto "${producto.descripcion}"?`)) {
-    return
+  if (
+    !confirm(
+      `¿Estás seguro de que quieres eliminar el producto "${producto.descripcion}"?`
+    )
+  ) {
+    return;
   }
-  
+
   try {
-    const response = await apiCall(`/admin/productos/${producto.id}`, { method: 'DELETE' })
+    const response = await apiCall(`/admin/productos/${producto.id}`, {
+      method: "DELETE",
+    });
     if (response.success) {
-      console.log('Producto eliminado exitosamente')
-      await loadProductos()
+      console.log("Producto eliminado exitosamente");
+      await loadProductos();
     }
   } catch (error) {
-    console.error('Error eliminando producto:', error)
-    alert('Error al eliminar el producto: ' + error.message)
+    console.error("Error eliminando producto:", error);
+    alert("Error al eliminar el producto: " + error.message);
   }
-}
-
+};
 
 const getEstadoClass = (estado) => {
   switch (estado) {
-    case 'ACTIVO':
-      return 'badge-success'
-    case 'INACTIVO':
-      return 'badge-warning'
-    case 'DESCONTINUADO':
-      return 'badge-danger'
+    case "ACTIVO":
+      return "badge-success";
+    case "INACTIVO":
+      return "badge-warning";
+    case "DESCONTINUADO":
+      return "badge-danger";
     default:
-      return 'badge-secondary'
+      return "badge-secondary";
   }
-}
+};
 
 const getStockClass = (stock) => {
-  if (!stock) return 'stock-unknown'
-  
+  if (!stock) return "stock-unknown";
+
   if (stock.disponible > 0) {
-    return stock.disponible > 5 ? 'stock-high' : 'stock-low'
+    return stock.disponible > 5 ? "stock-high" : "stock-low";
   }
-  return 'stock-out'
-}
+  return "stock-out";
+};
 
 const formatStockDate = (dateString) => {
-  if (!dateString) return ''
-  
+  if (!dateString) return "";
+
   try {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInMinutes = Math.floor((now - date) / (1000 * 60))
-    
-    if (diffInMinutes < 1) return 'Ahora'
-    if (diffInMinutes < 60) return `${diffInMinutes}m`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`
-    
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit'
-    })
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+
+    if (diffInMinutes < 1) return "Ahora";
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
+
+    return date.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+    });
   } catch (error) {
-    return ''
+    return "";
   }
-}
+};
 
 const handleImageError = (event) => {
-  event.target.src = '/images/placeholder-product.svg'
-}
+  event.target.src = "/images/placeholder-product.svg";
+};
 
 // Funciones de gestión de imágenes
 const openImageModal = (producto) => {
-  selectedProduct.value = producto
-  activeTab.value = 'principal'
-  showImageModal.value = true
-}
+  selectedProduct.value = producto;
+  activeTab.value = "principal";
+  showImageModal.value = true;
+};
 
 const closeImageModal = () => {
-  showImageModal.value = false
-  selectedProduct.value = null
-}
+  showImageModal.value = false;
+  selectedProduct.value = null;
+};
 
 const openUploadModal = () => {
   uploadData.value = {
     orden: getNextOrder(),
-    alt_text: ''
-  }
-  selectedFile.value = null
-  showUploadModal.value = true
-}
+    alt_text: "",
+  };
+  selectedFile.value = null;
+  showUploadModal.value = true;
+};
 
 const closeUploadModal = () => {
-  showUploadModal.value = false
-  selectedFile.value = null
+  showUploadModal.value = false;
+  selectedFile.value = null;
   uploadData.value = {
     orden: 1,
-    alt_text: ''
-  }
-}
+    alt_text: "",
+  };
+};
 
 const handleFileSelect = (event) => {
-  const file = event.target.files[0]
+  const file = event.target.files[0];
   if (file) {
-    selectedFile.value = file
+    selectedFile.value = file;
   }
-}
+};
 
 const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
 
 const getImagesByType = (tipo) => {
-  if (!selectedProduct.value?.imagenes) return []
-  return selectedProduct.value.imagenes.filter(img => img.tipo === tipo)
-}
+  if (!selectedProduct.value?.imagenes) return [];
+  return selectedProduct.value.imagenes.filter((img) => img.tipo === tipo);
+};
 
 const getImageCountByType = (tipo) => {
-  return getImagesByType(tipo).length
-}
+  return getImagesByType(tipo).length;
+};
 
 const getTipoNombre = (tipo) => {
-  const tipoObj = tiposVista.value.find(t => t.id === tipo)
-  return tipoObj ? tipoObj.nombre : tipo
-}
+  const tipoObj = tiposVista.value.find((t) => t.id === tipo);
+  return tipoObj ? tipoObj.nombre : tipo;
+};
 
 const getNextOrder = () => {
-  const imagenesDelTipo = getImagesByType(activeTab.value)
-  if (imagenesDelTipo.length === 0) return 1
-  const maxOrder = Math.max(...imagenesDelTipo.map(img => img.orden || 0))
-  return maxOrder + 1
-}
+  const imagenesDelTipo = getImagesByType(activeTab.value);
+  if (imagenesDelTipo.length === 0) return 1;
+  const maxOrder = Math.max(...imagenesDelTipo.map((img) => img.orden || 0));
+  return maxOrder + 1;
+};
 
 const uploadImage = async () => {
-  if (!selectedFile.value) return
+  if (!selectedFile.value) return;
 
-  uploading.value = true
+  uploading.value = true;
   try {
-    const formData = new FormData()
-    formData.append('imagen', selectedFile.value)
-    formData.append('producto_id', selectedProduct.value.id)
-    formData.append('tipo', activeTab.value)
-    formData.append('orden', uploadData.value.orden || 1)
-    formData.append('alt_text', uploadData.value.alt_text || '')
+    const formData = new FormData();
+    formData.append("imagen", selectedFile.value);
+    formData.append("producto_id", selectedProduct.value.id);
+    formData.append("tipo", activeTab.value);
+    formData.append("orden", uploadData.value.orden || 1);
+    formData.append("alt_text", uploadData.value.alt_text || "");
 
-    const response = await apiCall('/admin/imagenes/upload', {
-      method: 'POST',
+    const response = await apiCall("/admin/imagenes/upload", {
+      method: "POST",
       body: formData,
-      headers: {} // Let browser set Content-Type for FormData
-    })
+      headers: {}, // Let browser set Content-Type for FormData
+    });
 
     if (response.success) {
-      console.log('Imagen subida exitosamente')
-      closeUploadModal()
+      console.log("Imagen subida exitosamente");
+      closeUploadModal();
       // Recargar el producto para actualizar las imágenes
-      await reloadProductImages()
+      await reloadProductImages();
     }
   } catch (error) {
-    console.error('Error subiendo imagen:', error)
-    alert('Error al subir la imagen: ' + error.message)
+    console.error("Error subiendo imagen:", error);
+    alert("Error al subir la imagen: " + error.message);
   } finally {
-    uploading.value = false
+    uploading.value = false;
   }
-}
+};
 
 const deleteImage = async (imagen) => {
-  if (!confirm('¿Estás seguro de que quieres eliminar esta imagen?')) {
-    return
+  if (!confirm("¿Estás seguro de que quieres eliminar esta imagen?")) {
+    return;
   }
 
   try {
     const response = await apiCall(`/admin/imagenes/${imagen.id}`, {
-      method: 'DELETE'
-    })
+      method: "DELETE",
+    });
 
     if (response.success) {
-      console.log('Imagen eliminada exitosamente')
+      console.log("Imagen eliminada exitosamente");
       // Recargar el producto para actualizar las imágenes
-      await reloadProductImages()
+      await reloadProductImages();
     }
   } catch (error) {
-    console.error('Error eliminando imagen:', error)
-    alert('Error al eliminar la imagen: ' + error.message)
+    console.error("Error eliminando imagen:", error);
+    alert("Error al eliminar la imagen: " + error.message);
   }
-}
+};
 
 const reloadProductImages = async () => {
   try {
     // Buscar el producto actualizado en la lista
-    const productoActualizado = productos.value.find(p => p.id === selectedProduct.value.id)
+    const productoActualizado = productos.value.find(
+      (p) => p.id === selectedProduct.value.id
+    );
     if (productoActualizado) {
       // Recargar las imágenes del producto específico
-      const response = await apiCall(`/catalogo/productos/${selectedProduct.value.id}`)
+      const response = await apiCall(
+        `/catalogo/productos/${selectedProduct.value.id}`
+      );
       if (response.success && response.data) {
         // Actualizar las imágenes del producto en la lista
-        productoActualizado.imagenes = response.data.imagenes || []
+        productoActualizado.imagenes = response.data.imagenes || [];
         // Actualizar el producto seleccionado en el modal
-        selectedProduct.value.imagenes = response.data.imagenes || []
+        selectedProduct.value.imagenes = response.data.imagenes || [];
       }
     }
   } catch (error) {
-    console.error('Error recargando imágenes:', error)
+    console.error("Error recargando imágenes:", error);
   }
-}
+};
 
 // Funciones para modal de edición
 const openEditModal = async (producto) => {
-  editingProduct.value = producto
-  
+  editingProduct.value = producto;
+
   // Cargar datos del producto en el formulario
   editFormData.value = {
-    codigo_producto: producto.codigo_producto || '',
-    sku: producto.sku || '',
-    plu: producto.plu || '',
-    codigo_barras: producto.codigo_barras || '',
-    descripcion: producto.descripcion || '',
-    familia_id: producto.familia_id || '',
-    marca_id: producto.marca_id || '',
-    estado: producto.estado || 'ACTIVO',
-    disponible_web: producto.disponible_web || false,
-    temporadas: producto.temporadas?.map(t => t.id) || []
-  }
-  
-  editModalOpen.value = true
-  document.body.style.overflow = 'hidden'
-}
+    codigo_producto: producto.codigo_producto || "",
+    sku: producto.sku || "",
+    descripcion: producto.descripcion || "",
+    familia_id: producto.familia_id || "",
+    marca_id: producto.marca_id || "",
+    estado: producto.estado || "ACTIVO",
+    temporadas: producto.temporadas?.map((t) => t.id) || [],
+  };
+
+  editModalOpen.value = true;
+  document.body.style.overflow = "hidden";
+};
 
 const closeEditModal = () => {
-  editModalOpen.value = false
-  editingProduct.value = null
-  document.body.style.overflow = ''
-  
+  editModalOpen.value = false;
+  editingProduct.value = null;
+  document.body.style.overflow = "";
+
   // Limpiar formulario
   editFormData.value = {
-    codigo_producto: '',
-    sku: '',
-    plu: '',
-    codigo_barras: '',
-    descripcion: '',
-    familia_id: '',
-    marca_id: '',
-    estado: 'ACTIVO',
-    disponible_web: false,
-    temporadas: []
-  }
-}
+    codigo_producto: "",
+    sku: "",
+    descripcion: "",
+    familia_id: "",
+    marca_id: "",
+    estado: "ACTIVO",
+    temporadas: [],
+  };
+};
 
 const toggleTemporada = (temporadaId) => {
-  const index = editFormData.value.temporadas.indexOf(temporadaId)
+  const index = editFormData.value.temporadas.indexOf(temporadaId);
   if (index > -1) {
-    editFormData.value.temporadas.splice(index, 1)
+    editFormData.value.temporadas.splice(index, 1);
   } else {
-    editFormData.value.temporadas.push(temporadaId)
+    editFormData.value.temporadas.push(temporadaId);
   }
-}
+};
 
 const saveProducto = async () => {
-  if (!editingProduct.value) return
-  
-  saving.value = true
+  if (!editingProduct.value) return;
+
+  saving.value = true;
   try {
     // Preparar datos para enviar
     const payload = {
       ...editFormData.value,
-      temporadas: editFormData.value.temporadas
-    }
-    
-    const response = await apiCall(`/admin/productos/${editingProduct.value.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-    
+      temporadas: editFormData.value.temporadas,
+    };
+
+    const response = await apiCall(
+      `/admin/productos/${editingProduct.value.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
     if (response.success) {
       // Actualizar el producto en la lista local
-      const index = productos.value.findIndex(p => p.id === editingProduct.value.id)
+      const index = productos.value.findIndex(
+        (p) => p.id === editingProduct.value.id
+      );
       if (index > -1 && response.data) {
         // Usar los datos actualizados de la respuesta
         productos.value[index] = {
           ...productos.value[index],
           ...response.data,
-          temporadas: response.data.temporadas || []
-        }
+          temporadas: response.data.temporadas || [],
+        };
       }
-      
-      closeEditModal()
-      
+
+      closeEditModal();
+
       // Mostrar mensaje de éxito
-      console.log('Producto actualizado exitosamente')
+      console.log("Producto actualizado exitosamente");
     }
   } catch (error) {
-    console.error('Error actualizando producto:', error)
-    alert('Error al actualizar el producto: ' + error.message)
+    console.error("Error actualizando producto:", error);
+    alert("Error al actualizar el producto: " + error.message);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
-}
+};
+
+// Funciones de sincronización
+const openSyncModal = () => {
+  syncModalOpen.value = true;
+  syncData.value = null;
+  syncResult.value = null;
+};
+
+const closeSyncModal = () => {
+  syncModalOpen.value = false;
+  syncData.value = null;
+  syncResult.value = null;
+  syncing.value = false;
+  loadingSync.value = false;
+};
+
+const checkSyncData = async () => {
+  loadingSync.value = true;
+  try {
+    const response = await apiCall("/sync/compare", {
+      method: "GET",
+    });
+
+    if (response.success) {
+      syncData.value = response.data;
+      console.log("🔍 Datos de sincronización:", response.data);
+    }
+  } catch (error) {
+    console.error("❌ Error obteniendo datos de sincronización:", error);
+    alert("Error al analizar los productos: " + error.message);
+  } finally {
+    loadingSync.value = false;
+  }
+};
+
+const performSync = async () => {
+  syncing.value = true;
+  try {
+    const response = await apiCall("/sync/sync", {
+      method: "POST",
+    });
+
+    syncResult.value = response;
+    console.log("🔄 Resultado de sincronización:", response);
+
+    if (response.success) {
+      console.log(`✅ ${response.message}`);
+    }
+  } catch (error) {
+    console.error("❌ Error en sincronización:", error);
+    syncResult.value = {
+      success: false,
+      message: "Error durante la sincronización: " + error.message,
+    };
+  } finally {
+    syncing.value = false;
+  }
+};
+
+const refreshAfterSync = async () => {
+  closeSyncModal();
+  await cargarProductos();
+  console.log("🔄 Lista de productos actualizada después de la sincronización");
+};
 
 // Watchers
-watch(filters, () => {
-  pagina.value = 1
-  loadProductos()
-  loadEstadisticas()
-}, { deep: true })
+watch(
+  filters,
+  () => {
+    pagina.value = 1;
+    loadProductos();
+    loadEstadisticas();
+  },
+  { deep: true }
+);
 
 watch(pagina, () => {
-  loadProductos()
-})
+  loadProductos();
+});
 
 // Watch para cambios en ordenamiento
 watch([sortField, sortOrder], () => {
-  pagina.value = 1
-  loadProductos()
-})
+  pagina.value = 1;
+  loadProductos();
+});
 
 // Lifecycle
 onMounted(() => {
-  loadProductos()
-  loadEstadisticas()
-  loadFamilias()
-  loadMarcas()
-  loadTemporadas()
-})
+  loadProductos();
+  loadEstadisticas();
+  loadFamilias();
+  loadMarcas();
+  loadTemporadas();
+});
 </script>
 
 <style scoped>
@@ -1631,7 +2029,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-
 .stock-info {
   display: flex;
   flex-direction: column;
@@ -1815,11 +2212,11 @@ onMounted(() => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filters-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1829,13 +2226,13 @@ onMounted(() => {
   .filters-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .table th,
   .table td {
     padding: 0.5rem;
     font-size: 0.875rem;
   }
-  
+
   .product-description {
     max-width: 150px;
   }
@@ -2165,32 +2562,32 @@ onMounted(() => {
     margin: 0.5rem;
     max-height: 95vh;
   }
-  
+
   .modal-content {
     max-width: none;
     margin: 0.5rem;
   }
-  
+
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 1rem;
   }
-  
+
   .image-tabs {
     flex-wrap: wrap;
   }
-  
+
   .tab-button {
     flex: 1;
     min-width: 120px;
   }
-  
+
   .images-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 0.75rem;
   }
-  
+
   .section-header {
     flex-direction: column;
     align-items: stretch;
@@ -2393,26 +2790,275 @@ onMounted(() => {
   .modal-overlay {
     padding: 0.5rem;
   }
-  
+
   .modal-container {
     max-height: 95vh;
   }
-  
+
   .form-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .modal-header {
     padding: 1rem;
   }
-  
+
   .modal-body {
     padding: 1rem;
   }
-  
+
   .modal-footer {
     padding: 1rem;
     flex-direction: column;
   }
+}
+
+/* Estilos específicos para el modal de sincronización */
+.sync-modal {
+  max-width: 600px;
+}
+
+.sync-info {
+  text-align: center;
+}
+
+.sync-description p {
+  margin-bottom: 1rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.sync-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fef3c7;
+  color: #d97706;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.sync-actions {
+  margin-top: 1.5rem;
+}
+
+.sync-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.stat-card.highlight {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.stat-card.highlight .stat-value {
+  color: #3b82f6;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sync-preview {
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sync-preview h4 {
+  margin-bottom: 0.75rem;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.products-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 0.25rem;
+  border: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.preview-item strong {
+  color: #1f2937;
+  min-width: 100px;
+}
+
+.preview-item span {
+  color: #6b7280;
+  text-align: right;
+  flex: 1;
+}
+
+.preview-more {
+  padding: 0.5rem;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+.sync-up-to-date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #d1fae5;
+  color: #059669;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+}
+
+.sync-progress {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.progress-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #3b82f6;
+}
+
+.progress-indicator i {
+  font-size: 1.5rem;
+}
+
+.sync-complete {
+  padding: 1rem 0;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.result-header.success {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.result-header.error {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.result-details {
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.result-details p {
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.result-details p:last-child {
+  margin-bottom: 0;
+}
+
+.error-details {
+  margin-top: 1rem;
+}
+
+.error-details h5 {
+  margin-bottom: 0.5rem;
+  color: #dc2626;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.error-details ul {
+  list-style: none;
+  padding: 0;
+}
+
+.error-details li {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.btn.btn-secondary {
+  background: #6b7280;
+  color: white;
+  border: 1px solid #6b7280;
+}
+
+.btn.btn-secondary:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #4b5563;
+}
+
+.btn.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.btn-success {
+  background: #059669;
+  color: white;
+  border: 1px solid #059669;
+}
+
+.btn.btn-success:hover {
+  background: #047857;
+  border-color: #047857;
 }
 </style>
