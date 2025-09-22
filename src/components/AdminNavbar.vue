@@ -71,9 +71,6 @@
       <!-- Usuario y acciones -->
       <div class="nav-user">
         <div class="user-info">
-          <div class="user-avatar">
-            <i class="fas fa-user"></i>
-          </div>
           <div class="user-details">
             <div class="user-name">{{ auth.currentUser?.username }}</div>
             <div class="user-role">{{ auth.currentUser?.rol }}</div>
@@ -187,16 +184,6 @@ const handleLogout = () => {
   gap: 0.75rem;
 }
 
-.user-avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  background: #f3f4f6;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6b7280;
-}
 
 .user-details {
   display: flex;

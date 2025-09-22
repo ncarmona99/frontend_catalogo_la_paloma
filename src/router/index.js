@@ -3,6 +3,7 @@ import { auth } from '@/stores/auth'
 import CatalogoView from '@/views/CatalogoView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ForgotPasswordView from '@/views/ForgotPasswordView.vue'
+import ResetPasswordView from '@/views/ResetPasswordView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import AdminCategoriasView from '@/views/admin/AdminCategoriasView.vue'
 import AdminProductosView from '@/views/admin/AdminProductosView.vue'
@@ -19,7 +20,16 @@ const router = createRouter({
     {
       path: '/',
       name: 'Catalogo',
-      component: CatalogoView
+      component: CatalogoView,
+      props: (route) => ({
+        // Pasar query parameters como props
+        busqueda: route.query.busqueda || '',
+        familia: route.query.familia ? parseInt(route.query.familia) : null,
+        marca: route.query.marca ? parseInt(route.query.marca) : null,
+        temporada: route.query.temporada ? parseInt(route.query.temporada) : null,
+        zona: route.query.zona ? parseInt(route.query.zona) : null,
+        stock: route.query.stock || ''
+      })
     },
     {
       path: '/admin/temporadas',
@@ -37,6 +47,12 @@ const router = createRouter({
       path: '/forgot-password',
       name: 'ForgotPassword',
       component: ForgotPasswordView,
+      meta: { requiresGuest: true }
+    },
+    {
+      path: '/reset-password',
+      name: 'ResetPassword',
+      component: ResetPasswordView,
       meta: { requiresGuest: true }
     },
     {
@@ -103,8 +119,18 @@ const router = createRouter({
   ]
 })
 
-// Guard de navegación mejorado
-router.beforeEach((to, from, next) => {
+// Guard de navegación con verificación de sesión segura
+router.beforeEach(async (to, from, next) => {
+  // Verificar sesión antes de cualquier navegación
+  if (auth.isAuthenticated) {
+    const sessionValid = await auth.checkSession()
+    if (!sessionValid) {
+      console.log('🔄 Sesión expirada, redirigiendo al login')
+      next('/login')
+      return
+    }
+  }
+
   // Rutas que requieren autenticación
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     next('/login')

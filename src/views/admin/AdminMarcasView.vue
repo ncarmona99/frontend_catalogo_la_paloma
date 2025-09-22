@@ -15,10 +15,10 @@
               Gestiona las marcas disponibles para los productos
             </p>
           </div>
-          <router-link to="/admin/marcas/nueva" class="btn btn-primary">
+          <button class="btn btn-primary" @click="showCreateModal = true">
             <i class="fas fa-plus"></i>
             Nueva Marca
-          </router-link>
+          </button>
         </div>
 
         <!-- Filtros -->
@@ -95,10 +95,10 @@
               <i class="fas fa-tags"></i>
               <h3>No hay marcas</h3>
               <p>Comienza agregando tu primera marca al sistema</p>
-              <router-link to="/admin/marcas/nueva" class="btn btn-primary">
+              <button class="btn btn-primary" @click="showCreateModal = true">
                 <i class="fas fa-plus"></i>
                 Crear Marca
-              </router-link>
+              </button>
             </div>
             
             <div v-else class="table-container">
@@ -148,13 +148,13 @@
                     </td>
                     <td>
                       <div class="action-buttons">
-                        <router-link 
-                          :to="`/admin/marcas/editar/${marca.id}`"
+                        <button 
                           class="btn btn-sm btn-ghost"
+                          @click="editMarca(marca)"
                           title="Editar"
                         >
                           <i class="fas fa-edit"></i>
-                        </router-link>
+                        </button>
                         <button 
                           class="btn btn-sm btn-ghost btn-danger"
                           @click="deleteMarca(marca)"
@@ -208,6 +208,56 @@
         </div>
       </div>
     </main>
+
+    <!-- Modal de Crear/Editar Marca -->
+    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">
+            {{ showEditModal ? 'Editar Marca' : 'Nueva Marca' }}
+          </h3>
+          <button class="modal-close" @click="closeModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <form @submit.prevent="saveMarca" class="modal-body">
+          <div class="form-group">
+            <label for="codigo" class="form-label">Código *</label>
+            <input 
+              id="codigo"
+              v-model="formData.codigo" 
+              type="text" 
+              class="form-input"
+              placeholder="Ej: MAR001"
+              required
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="nombre" class="form-label">Nombre *</label>
+            <input 
+              id="nombre"
+              v-model="formData.nombre" 
+              type="text" 
+              class="form-input"
+              placeholder="Ej: Samsung"
+              required
+            >
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" @click="closeModal">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="saving">
+              <i v-if="saving" class="fas fa-spinner fa-spin"></i>
+              {{ showEditModal ? 'Actualizar' : 'Crear' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -222,11 +272,21 @@ const router = useRouter()
 // Estado reactivo
 const marcas = ref([])
 const loading = ref(false)
+const saving = ref(false)
 const estadisticas = ref({ marcas_activas: 0, marcas_con_productos: 0 })
 const pagina = ref(1)
 const limite = ref(20)
 const totalMarcas = ref(0)
 const totalPaginas = ref(0)
+
+// Estado del modal
+const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const editingMarca = ref(null)
+const formData = ref({
+  codigo: '',
+  nombre: ''
+})
 
 // Estado para ordenamiento
 const sortField = ref('id')
@@ -358,6 +418,54 @@ const deleteMarca = async (marca) => {
   } catch (error) {
     console.error('Error eliminando marca:', error)
     alert('Error al eliminar la marca: ' + error.message)
+  }
+}
+
+// Métodos del modal
+const editMarca = (marca) => {
+  editingMarca.value = marca
+  formData.value = {
+    codigo: marca.codigo,
+    nombre: marca.nombre
+  }
+  showEditModal.value = true
+}
+
+const closeModal = () => {
+  showCreateModal.value = false
+  showEditModal.value = false
+  editingMarca.value = null
+  formData.value = {
+    codigo: '',
+    nombre: ''
+  }
+}
+
+const saveMarca = async () => {
+  saving.value = true
+  try {
+    const isEditing = showEditModal.value
+    const url = isEditing ? `/admin/marcas/${editingMarca.value.id}` : '/admin/marcas'
+    const method = isEditing ? 'PUT' : 'POST'
+    
+    const response = await apiCall(url, {
+      method,
+      body: JSON.stringify(formData.value)
+    })
+    
+    if (response.success) {
+      console.log(`Marca ${isEditing ? 'actualizada' : 'creada'} exitosamente`)
+      closeModal()
+      await loadMarcas()
+      await loadEstadisticas()
+    } else {
+      alert('Error al guardar la marca: ' + response.message)
+    }
+  } catch (error) {
+    console.error('Error guardando marca:', error)
+    alert('Error al guardar la marca: ' + error.message)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -795,6 +903,99 @@ onMounted(() => {
   gap: 0.25rem;
 }
 
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .page-header {
@@ -814,6 +1015,15 @@ onMounted(() => {
   .table td {
     padding: 0.5rem;
     font-size: 0.875rem;
+  }
+  
+  .modal {
+    margin: 1rem;
+    max-width: calc(100% - 2rem);
+  }
+  
+  .form-actions {
+    flex-direction: column;
   }
 }
 </style>

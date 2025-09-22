@@ -42,6 +42,25 @@
         <div v-show="mostrarFiltros" class="filtros-content">
 
 
+          <!-- Categoría -->
+          <div class="filtro-grupo">
+            <label class="filtro-label">Categoría</label>
+            <select
+              v-model="filtrosLocales.familia"
+              class="filtro-select"
+              @change="aplicarFiltro('familia', $event.target.value)"
+            >
+              <option value="">Todas las categorías</option>
+              <option
+                v-for="familia in catalogo.familias"
+                :key="familia.id"
+                :value="familia.id"
+              >
+                {{ familia.nombre }}
+              </option>
+            </select>
+          </div>
+
           <!-- Marca -->
           <div class="filtro-grupo">
             <label class="filtro-label">Marca</label>
@@ -80,6 +99,34 @@
             </select>
           </div>
 
+          <!-- Venta Zonal -->
+          <div class="filtro-grupo">
+            <label class="filtro-label">Venta Zonal</label>
+            <select
+              v-model="filtrosLocales.zona"
+              class="filtro-select"
+              @change="aplicarFiltro('zona', $event.target.value)"
+            >
+              <option value="">Todos los productos</option>
+              <option value="1">Solo Venta Zonal</option>
+              <option value="0">Solo No Zonal</option>
+            </select>
+          </div>
+
+          <!-- Stock -->
+          <div class="filtro-grupo">
+            <label class="filtro-label">Stock</label>
+            <select
+              v-model="filtrosLocales.stock"
+              class="filtro-select"
+              @change="aplicarFiltro('stock', $event.target.value)"
+            >
+              <option value="">Todos los productos</option>
+              <option value="con_stock">Solo con Stock</option>
+              <option value="sin_stock">Solo sin Stock</option>
+            </select>
+          </div>
+
 
         </div>
       </transition>
@@ -115,8 +162,11 @@ const props = defineProps({
 
 const busquedaLocal = ref('')
 const filtrosLocales = ref({
+  familia: '',
   marca: '',
-  temporada: ''
+  temporada: '',
+  zona: '',
+  stock: ''
 })
 
 const mostrarFiltros = ref(false)
@@ -126,8 +176,11 @@ let searchTimeout = null
 onMounted(() => {
   busquedaLocal.value = catalogo.state.filtros.busqueda
   filtrosLocales.value = {
+    familia: catalogo.state.filtros.familia || '',
     marca: catalogo.state.filtros.marca || '',
-    temporada: catalogo.state.filtros.temporada || ''
+    temporada: catalogo.state.filtros.temporada || '',
+    zona: catalogo.state.filtros.zona || '',
+    stock: catalogo.state.filtros.stock || ''
   }
 })
 
@@ -135,14 +188,14 @@ onMounted(() => {
 const onSearchInput = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
-    catalogo.buscar(busquedaLocal.value)
+    catalogo.buscarConURL(busquedaLocal.value)
   }, 300)
 }
 
 // Limpiar búsqueda
 const limpiarBusqueda = () => {
   busquedaLocal.value = ''
-  catalogo.buscar('')
+  catalogo.buscarConURL('')
 }
 
 // Aplicar filtro individual
@@ -150,21 +203,24 @@ const aplicarFiltro = (tipo, valor) => {
   let valorProcesado = valor || null
   
   // Convertir IDs a números
-  if ((tipo === 'marca' || tipo === 'temporada') && valor) {
+  if ((tipo === 'familia' || tipo === 'marca' || tipo === 'temporada') && valor) {
     valorProcesado = parseInt(valor)
   }
   
-  catalogo.aplicarFiltro(tipo, valorProcesado)
+  catalogo.aplicarFiltroConURL(tipo, valorProcesado)
 }
 
 // Limpiar todos los filtros
 const limpiarTodosFiltros = () => {
   busquedaLocal.value = ''
   filtrosLocales.value = {
+    familia: '',
     marca: '',
-    temporada: ''
+    temporada: '',
+    zona: '',
+    stock: ''
   }
-  catalogo.limpiarFiltros()
+  catalogo.limpiarFiltrosConURL()
 }
 
 // Auto-expandir filtros (siempre abierto en sidebar)

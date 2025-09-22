@@ -216,8 +216,34 @@ const loadCategorias = async () => {
   loading.value = true
   try {
     const response = await apiCall('/catalogo/familias')
+    console.log('🔍 Respuesta de familias:', response)
     if (response.success) {
+      console.log('🔍 Datos de familias recibidos:', response.data)
+      console.log('🔍 Cantidad de familias:', response.data?.length)
+      
+      // Verificar duplicados por nombre
+      const nombres = response.data.map(f => f.nombre)
+      const nombresUnicos = [...new Set(nombres)]
+      console.log('🔍 Nombres únicos:', nombresUnicos.length, 'vs total:', nombres.length)
+      
+      // Verificar duplicados por código
+      const codigos = response.data.map(f => f.codigo)
+      const codigosUnicos = [...new Set(codigos)]
+      console.log('🔍 Códigos únicos:', codigosUnicos.length, 'vs total:', codigos.length)
+      
+      // Mostrar duplicados si los hay
+      if (nombresUnicos.length !== nombres.length) {
+        const duplicadosNombre = nombres.filter((nombre, index) => nombres.indexOf(nombre) !== index)
+        console.log('🔍 Nombres duplicados:', [...new Set(duplicadosNombre)])
+      }
+      
+      if (codigosUnicos.length !== codigos.length) {
+        const duplicadosCodigo = codigos.filter((codigo, index) => codigos.indexOf(codigo) !== index)
+        console.log('🔍 Códigos duplicados:', [...new Set(duplicadosCodigo)])
+      }
+      
       categorias.value = response.data
+      console.log('🔍 Familias en el componente:', categorias.value)
     }
   } catch (error) {
     console.error('Error cargando categorías:', error)

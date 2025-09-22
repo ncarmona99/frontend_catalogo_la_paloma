@@ -46,13 +46,6 @@
               <div class="stat-label">Total Temporadas</div>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-box"></i></div>
-            <div class="stat-content">
-              <div class="stat-value">{{ temporadasConProductos }}</div>
-              <div class="stat-label">Con Productos</div>
-            </div>
-          </div>
         </div>
 
         <div class="card">
@@ -149,25 +142,55 @@
           </div>
         </div>
 
-        <div v-if="showForm" class="modal-backdrop" @click.self="closeForm">
-          <div class="modal">
-            <h3>{{ form.id ? 'Editar temporada' : 'Nueva temporada' }}</h3>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Código</label>
-                <input v-model="form.codigo" class="input" />
-              </div>
-              <div class="form-group">
-                <label>Nombre</label>
-                <input v-model="form.nombre" class="input" />
-              </div>
-            </div>
-            <div class="modal-actions">
-              <button class="btn" @click="closeForm">Cancelar</button>
-              <button class="btn btn-primary" @click="saveForm">Guardar</button>
-            </div>
-          </div>
+    <!-- Modal de Crear/Editar Temporada -->
+    <div v-if="showForm" class="modal-overlay" @click="closeForm">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">
+            {{ form.id ? 'Editar Temporada' : 'Nueva Temporada' }}
+          </h3>
+          <button class="modal-close" @click="closeForm">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
+        
+        <form @submit.prevent="saveForm" class="modal-body">
+          <div class="form-group">
+            <label for="codigo" class="form-label">Código *</label>
+            <input 
+              id="codigo"
+              v-model="form.codigo" 
+              type="text" 
+              class="form-input"
+              placeholder="Ej: TEMP001"
+              required
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="nombre" class="form-label">Nombre *</label>
+            <input 
+              id="nombre"
+              v-model="form.nombre" 
+              type="text" 
+              class="form-input"
+              placeholder="Ej: Navidad 2024"
+              required
+            >
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" @click="closeForm">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="saving">
+              <i v-if="saving" class="fas fa-spinner fa-spin"></i>
+              {{ form.id ? 'Actualizar' : 'Crear' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
       </div>
     </main>
   </div>
@@ -180,6 +203,7 @@ import { apiCall } from '@/config/api'
 
 const temporadas = ref([])
 const loading = ref(false)
+const saving = ref(false)
 const pagina = ref(1)
 const limite = ref(20)
 const totalTemporadas = ref(0)
@@ -191,8 +215,7 @@ const filters = ref({ busqueda: '' })
 
 const hasActiveFilters = computed(() => Object.values(filters.value).some(v => v !== ''))
 
-const estadisticas = ref({ total_temporadas: 0, temporadas_con_productos: 0 })
-const temporadasConProductos = computed(() => estadisticas.value?.temporadas_con_productos || 0)
+const estadisticas = ref({ total_temporadas: 0 })
 
 const paginationInfo = computed(() => {
   const from = (pagina.value - 1) * limite.value + 1
@@ -258,15 +281,31 @@ function closeForm() {
 }
 
 async function saveForm() {
-  const payload = { codigo: form.value.codigo, nombre: form.value.nombre }
-  if (form.value.id) {
-    await apiCall(`/admin/temporadas/${form.value.id}`, { method: 'PUT', body: JSON.stringify(payload) })
-  } else {
-    await apiCall('/admin/temporadas', { method: 'POST', body: JSON.stringify(payload) })
+  saving.value = true
+  try {
+    const payload = { codigo: form.value.codigo, nombre: form.value.nombre }
+    const url = form.value.id ? `/admin/temporadas/${form.value.id}` : '/admin/temporadas'
+    const method = form.value.id ? 'PUT' : 'POST'
+    
+    const response = await apiCall(url, { 
+      method, 
+      body: JSON.stringify(payload) 
+    })
+    
+    if (response.success) {
+      console.log(`Temporada ${form.value.id ? 'actualizada' : 'creada'} exitosamente`)
+      showForm.value = false
+      await loadTemporadas()
+      await loadEstadisticas()
+    } else {
+      alert('Error al guardar la temporada: ' + response.message)
+    }
+  } catch (error) {
+    console.error('Error guardando temporada:', error)
+    alert('Error al guardar la temporada: ' + error.message)
+  } finally {
+    saving.value = false
   }
-  showForm.value = false
-  await loadTemporadas()
-  await loadEstadisticas()
 }
 
 async function confirmDelete(t) {
@@ -365,11 +404,114 @@ onMounted(() => { loadTemporadas(); loadEstadisticas() })
 .card-footer { padding: 1.5rem; border-top: 1px solid #e5e7eb; }
 .pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; }
 .pagination-pages { display: flex; gap: 0.25rem; }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
 @media (max-width: 768px) {
   .page-header { flex-direction: column; align-items: stretch; }
   .filters-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .table th, .table td { padding: 0.5rem; font-size: 0.875rem; }
+  
+  .modal {
+    margin: 1rem;
+    max-width: calc(100% - 2rem);
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
 }
 </style>
 

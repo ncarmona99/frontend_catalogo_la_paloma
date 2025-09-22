@@ -1,9 +1,6 @@
 <template>
   <div 
     class="producto-card"
-      :class="{ 
-    loading: loading
-  }"
     @click="handleClick"
   >
 
@@ -48,6 +45,12 @@
         </div>
       </div>
 
+      <!-- Indicador de Venta Zonal -->
+      <div v-if="producto.zona === 1" class="zona-indicator">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>Venta Zonal</span>
+      </div>
+
     </div>
   </div>
 </template>
@@ -63,7 +66,6 @@ const props = defineProps({
   }
 })
 
-const loading = ref(false)
 const imageLoaded = ref(false)
 
 // Computed properties
@@ -117,11 +119,7 @@ const stockText = computed(() => {
 
 // Manejar click en la tarjeta
 const handleClick = async () => {
-  if (loading.value) return
-  
-  loading.value = true
   await catalogo.abrirModal(props.producto.id)
-  loading.value = false
 }
 
 // Eventos de imagen
@@ -280,13 +278,29 @@ const onImageError = (event) => {
   color: #9ca3af;
 }
 
-
-
-
-.producto-card.loading {
-  pointer-events: none;
-  opacity: 0.7;
+/* Indicador de zona */
+.zona-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 0.375rem;
 }
+
+.zona-indicator i {
+  color: #10b981;
+  font-size: 0.875rem;
+}
+
+
+
+
 
 /* Responsive */
 @media (max-width: 768px) {

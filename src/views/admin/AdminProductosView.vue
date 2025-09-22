@@ -53,7 +53,7 @@
               <label class="filter-label">Categoría</label>
               <select v-model="filters.familia" class="filter-select">
                 <option value="">Todas las categorías</option>
-                <option v-for="familia in familias" :key="familia.id" :value="familia.codigo">
+                <option v-for="familia in familias" :key="familia.id" :value="familia.id">
                   {{ familia.nombre }}
                 </option>
               </select>
@@ -63,7 +63,7 @@
               <label class="filter-label">Marca</label>
               <select v-model="filters.marca" class="filter-select">
                 <option value="">Todas las marcas</option>
-                <option v-for="marca in marcas" :key="marca.id" :value="marca.codigo">
+                <option v-for="marca in marcas" :key="marca.id" :value="marca.id">
                   {{ marca.nombre }}
                 </option>
               </select>
@@ -79,7 +79,33 @@
               </select>
             </div>
             
-
+            <div class="filter-group">
+              <label class="filter-label">Temporada</label>
+              <select v-model="filters.temporada" class="filter-select">
+                <option value="">Todas las temporadas</option>
+                <option v-for="temporada in temporadas" :key="temporada.id" :value="temporada.id">
+                  {{ temporada.nombre }}
+                </option>
+              </select>
+            </div>
+            
+            <div class="filter-group">
+              <label class="filter-label">Venta Zonal</label>
+              <select v-model="filters.zona" class="filter-select">
+                <option value="">Todos los productos</option>
+                <option value="1">Solo Venta Zonal</option>
+                <option value="0">Solo No Zonal</option>
+              </select>
+            </div>
+            
+            <div class="filter-group">
+              <label class="filter-label">Stock</label>
+              <select v-model="filters.stock" class="filter-select">
+                <option value="">Todos los productos</option>
+                <option value="con_stock">Solo con Stock</option>
+                <option value="sin_stock">Solo sin Stock</option>
+              </select>
+            </div>
             
           </div>
         </div>
@@ -102,16 +128,6 @@
             <div class="stat-content">
               <div class="stat-value">{{ productosActivos }}</div>
               <div class="stat-label">Productos Activos</div>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-icon">
-              <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ productosSinStock }}</div>
-              <div class="stat-label">Sin Stock</div>
             </div>
           </div>
         </div>
@@ -715,6 +731,7 @@ const router = useRouter()
 const productos = ref([])
 const familias = ref([])
 const marcas = ref([])
+const temporadas = ref([])
 const loading = ref(false)
 const estadisticas = ref({ productos_activos: 0, productos_sin_stock: 0 })
 const pagina = ref(1)
@@ -730,7 +747,10 @@ const filters = ref({
   busqueda: '',
   familia: '',
   marca: '',
-  estado: ''
+  estado: '',
+  temporada: '',
+  zona: '',
+  stock: ''
 })
 
 // Estado para gestión de imágenes
@@ -751,7 +771,6 @@ const uploadData = ref({
 const editModalOpen = ref(false)
 const editingProduct = ref(null)
 const saving = ref(false)
-const temporadas = ref([])
 
 const editFormData = ref({
   codigo_producto: '',
@@ -785,10 +804,6 @@ const hasActiveFilters = computed(() => {
 
 const productosActivos = computed(() => {
   return estadisticas.value?.productos_activos || 0
-})
-
-const productosSinStock = computed(() => {
-  return estadisticas.value?.productos_sin_stock || 0
 })
 
 const paginationInfo = computed(() => {
@@ -920,7 +935,10 @@ const clearFilters = () => {
     busqueda: '',
     familia: '',
     marca: '',
-    estado: ''
+    estado: '',
+    temporada: '',
+    zona: '',
+    stock: ''
   }
   pagina.value = 1
 }
@@ -1332,7 +1350,7 @@ onMounted(() => {
 .filters-grid {
   padding: 1.5rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
 }
 
@@ -1786,6 +1804,12 @@ onMounted(() => {
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .filters-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .page-header {
     flex-direction: column;
@@ -1793,11 +1817,17 @@ onMounted(() => {
   }
   
   .filters-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
   
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
   }
   
   .table th,

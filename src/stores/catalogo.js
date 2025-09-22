@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { apiCall } from '@/config/api'
+import router from '@/router'
 
 // Estado global del catálogo
 const state = reactive({
@@ -20,7 +21,10 @@ const state = reactive({
     marca: null,
     temporada: null,
     proveedor: null,
-    estado: null
+    estado: null,
+    zona: null,
+    stock: null,
+    familia: null
   },
   
   // Paginación
@@ -72,18 +76,27 @@ export const catalogo = {
   },
 
   get filtrosActivos() {
-    const { busqueda, marca, temporada, proveedor, estado } = state.filtros
+    const { busqueda, marca, temporada, proveedor, estado, zona, stock, familia } = state.filtros
     return {
       ...(busqueda && { busqueda }),
       ...(marca && { marca }),
       ...(temporada && { temporada }),
       ...(proveedor && { proveedor }),
-      ...(estado && { estado })
+      ...(estado && { estado }),
+      ...(zona !== null && { zona }),
+      ...(stock && stock !== '' && { stock }),
+      ...(familia && { familia })
     }
   },
 
   get totalFiltrosActivos() {
     return Object.keys(this.filtrosActivos).length
+  },
+
+  get temporadaActiva() {
+    if (!state.filtros.temporada) return null
+    const temporada = state.temporadas.find(t => t.id === state.filtros.temporada)
+    return temporada || null
   },
 
   get filtros() {
@@ -165,6 +178,9 @@ export const catalogo = {
         limite: state.paginacion.limite,
         ...this.filtrosActivos
       })
+      
+      console.log('🔍 Parámetros enviados al backend:', params.toString())
+      console.log('🔍 Filtros activos:', this.filtrosActivos)
 
       const response = await apiCall(`/catalogo/productos?${params}`)
       
@@ -311,12 +327,18 @@ export const catalogo = {
 
   // Modal del producto
   async abrirModal(productoId) {
-    const producto = await this.obtenerProducto(productoId)
-    if (producto) {
-      state.productoSeleccionado = producto
-      state.modalAbierto = true
-      // Evitar scroll del body cuando el modal está abierto
-      document.body.style.overflow = 'hidden'
+    try {
+      const producto = await this.obtenerProducto(productoId)
+      if (producto) {
+        state.productoSeleccionado = producto
+        state.modalAbierto = true
+        // Evitar scroll del body cuando el modal está abierto
+        document.body.style.overflow = 'hidden'
+        return producto
+      }
+    } catch (error) {
+      console.error('Error al abrir modal:', error)
+      throw error
     }
   },
 
@@ -348,5 +370,89 @@ export const catalogo = {
     return state.ubicaciones.find(u => u.codigo === codigo) || null
   },
 
+  // Funciones para sincronizar con URL
+  actualizarURL() {
+    const query = {}
+    
+    // Solo agregar filtros que tienen valores
+    if (state.filtros.busqueda) {
+      query.busqueda = state.filtros.busqueda
+    }
+    if (state.filtros.marca) {
+      query.marca = state.filtros.marca
+    }
+    if (state.filtros.temporada) {
+      query.temporada = state.filtros.temporada
+    }
+    if (state.filtros.zona !== null) {
+      query.zona = state.filtros.zona
+    }
+    if (state.filtros.stock && state.filtros.stock !== '') {
+      query.stock = state.filtros.stock
+    }
+    if (state.filtros.familia) {
+      query.familia = state.filtros.familia
+    }
+    
+    // Actualizar la URL sin recargar la página
+    router.replace({ 
+      name: 'Catalogo', 
+      query: Object.keys(query).length > 0 ? query : undefined 
+    })
+  },
+
+  // Aplicar filtros desde la URL
+  aplicarFiltrosDesdeURL(filtrosURL) {
+    if (filtrosURL.busqueda !== undefined) {
+      state.filtros.busqueda = filtrosURL.busqueda
+    }
+    if (filtrosURL.marca !== undefined) {
+      state.filtros.marca = filtrosURL.marca
+    }
+    if (filtrosURL.temporada !== undefined) {
+      state.filtros.temporada = filtrosURL.temporada
+    }
+    if (filtrosURL.zona !== undefined) {
+      state.filtros.zona = filtrosURL.zona
+    }
+    if (filtrosURL.stock !== undefined) {
+      state.filtros.stock = filtrosURL.stock || null
+    }
+    if (filtrosURL.familia !== undefined) {
+      state.filtros.familia = filtrosURL.familia
+    }
+  },
+
+  // Versión mejorada de aplicarFiltro que actualiza la URL
+  async aplicarFiltroConURL(tipo, valor) {
+    console.log('🔍 Aplicando filtro:', tipo, '=', valor)
+    state.filtros[tipo] = valor
+    console.log('🔍 Filtros después de aplicar:', state.filtros)
+    this.actualizarURL()
+    await this.cargarProductos(true)
+  },
+
+  // Versión mejorada de buscar que actualiza la URL
+  async buscarConURL(termino) {
+    state.filtros.busqueda = termino
+    this.actualizarURL()
+    await this.cargarProductos(true)
+  },
+
+  // Versión mejorada de limpiarFiltros que actualiza la URL
+  async limpiarFiltrosConURL() {
+    state.filtros = {
+      busqueda: '',
+      marca: null,
+      temporada: null,
+      proveedor: null,
+      estado: null,
+      zona: null,
+      stock: null,
+      familia: null
+    }
+    this.actualizarURL()
+    await this.cargarProductos(true)
+  }
 
 }

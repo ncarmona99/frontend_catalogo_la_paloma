@@ -8,6 +8,10 @@
         <div class="logo-section">
           <img src="@/assets/logo.png" alt="La Paloma" class="logo" />
           <h1 class="catalogo-titulo">Catálogo La Paloma</h1>
+          <!-- Título dinámico de temporada -->
+          <h2 v-if="catalogo.temporadaActiva" class="season-title">
+            {{ catalogo.temporadaActiva.nombre }}
+          </h2>
         </div>
       </div>
       
@@ -42,6 +46,10 @@
           <div class="header-logo-section">
             <img src="@/assets/logo.png" alt="La Paloma" class="header-logo" />
             <h1 class="header-title">Catálogo La Paloma</h1>
+            <!-- Título dinámico de temporada -->
+            <h2 v-if="catalogo.temporadaActiva" class="header-season-title">
+              {{ catalogo.temporadaActiva.nombre }}
+            </h2>
           </div>
         </div>
       </div>
@@ -103,6 +111,14 @@
       @cerrar="cerrarModal"
     />
 
+    <!-- Spinner de carga global para modal -->
+    <div v-if="modalLoading" class="modal-loading-overlay">
+      <div class="modal-loading-spinner">
+        <div class="spinner-large"></div>
+        <span class="loading-text">Cargando producto...</span>
+      </div>
+    </div>
+
     <!-- Botón de scroll to top -->
     <button
       v-show="showScrollTop"
@@ -116,12 +132,40 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { catalogo } from '@/stores/catalogo'
 import SearchFilters from '@/components/SearchFilters.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import ProductModal from '@/components/ProductModal.vue'
 import Pagination from '@/components/Pagination.vue'
+
+// Props para recibir filtros de la URL
+const props = defineProps({
+  busqueda: {
+    type: String,
+    default: ''
+  },
+  familia: {
+    type: Number,
+    default: null
+  },
+  marca: {
+    type: Number,
+    default: null
+  },
+  temporada: {
+    type: Number,
+    default: null
+  },
+  zona: {
+    type: Number,
+    default: null
+  },
+  stock: {
+    type: String,
+    default: ''
+  }
+})
 
 // Estado del modal
 const productoSeleccionado = ref(null)
@@ -134,21 +178,69 @@ const sidebar = ref(null)
 const showScrollTop = ref(false)
 const scrollTimeout = ref(null)
 
+// Estado de carga del modal
+const modalLoading = ref(false)
+
 // Computed
 const productos = computed(() => catalogo.productos)
 
 // Métodos
-const abrirModal = (producto) => {
-  productoSeleccionado.value = producto
+const abrirModal = async (producto) => {
+  // Mostrar loading inmediatamente
+  modalLoading.value = true
+  
+  try {
+    // El store ya maneja la carga y actualización del producto
+    await catalogo.abrirModal(producto.id)
+    // El producto ya está disponible en catalogo.state.productoSeleccionado
+    productoSeleccionado.value = catalogo.state.productoSeleccionado
+  } catch (error) {
+    console.error('Error al cargar el producto:', error)
+    // En caso de error, asegurar que el loading se oculte
+  } finally {
+    // Ocultar loading
+    modalLoading.value = false
+  }
 }
 
 const cerrarModal = () => {
   productoSeleccionado.value = null
+  modalLoading.value = false // Asegurar que el loading se oculte
 }
 
+// Watcher para cerrar el loading cuando el modal se cierre desde el store
+watch(() => catalogo.state.modalAbierto, (isOpen) => {
+  if (!isOpen) {
+    modalLoading.value = false
+    productoSeleccionado.value = null
+  }
+})
+
 const limpiarFiltros = () => {
-  catalogo.limpiarFiltros()
+  catalogo.limpiarFiltrosConURL()
 }
+
+// Watcher para detectar cambios en los props (filtros de URL)
+watch(() => [props.busqueda, props.familia, props.marca, props.temporada, props.zona, props.stock], () => {
+  console.log('🔄 Detectados cambios en filtros de URL:', {
+    busqueda: props.busqueda,
+    familia: props.familia,
+    marca: props.marca,
+    temporada: props.temporada,
+    zona: props.zona,
+    stock: props.stock
+  })
+  
+  // Aplicar filtros desde la URL
+  catalogo.aplicarFiltrosDesdeURL({
+    busqueda: props.busqueda,
+    familia: props.familia,
+    marca: props.marca,
+    temporada: props.temporada,
+    zona: props.zona,
+    stock: props.stock
+  })
+}, { immediate: true })
 
 // Métodos del sidebar
 const toggleSidebar = () => {
@@ -355,6 +447,30 @@ onUnmounted(() => {
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+}
+
+.season-title {
+  color: #059669;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0 0;
+  text-align: center;
+  background: #ecfdf5;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid #a7f3d0;
+}
+
+.header-season-title {
+  color: #059669;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0.25rem 0 0 0;
+  text-align: center;
+  background: #ecfdf5;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid #a7f3d0;
 }
 
 .sidebar-admin {
@@ -624,6 +740,53 @@ onUnmounted(() => {
   margin: 0 auto 0.5rem;
 }
 
+/* Spinner de carga global para modal */
+.modal-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(2px);
+}
+
+.modal-loading-spinner {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  min-width: 200px;
+}
+
+.spinner-large {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.modal-loading-spinner .loading-text {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Botón scroll to top */
 .scroll-top-btn {
   position: fixed;
@@ -706,6 +869,14 @@ onUnmounted(() => {
     font-size: 1.375rem;
   }
   
+  .season-title {
+    font-size: 1.125rem;
+  }
+  
+  .header-season-title {
+    font-size: 1.25rem;
+  }
+  
   .sidebar-admin {
     margin-bottom: 2.5rem;
   }
@@ -762,6 +933,14 @@ onUnmounted(() => {
   
   .sidebar-header .catalogo-titulo {
     font-size: 1.1rem;
+  }
+  
+  .season-title {
+    font-size: 0.875rem;
+  }
+  
+  .header-season-title {
+    font-size: 1rem;
   }
 }
 </style>

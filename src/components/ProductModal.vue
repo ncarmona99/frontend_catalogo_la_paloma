@@ -125,35 +125,21 @@
                   <i class="fas fa-barcode"></i>
                   <span>{{ producto.sku }}</span>
                 </div>
+                <div v-if="producto?.zona !== undefined" class="meta-item zona-item">
+                  <i :class="producto.zona === 1 ? 'fas fa-map-marker-alt' : 'fas fa-store'"></i>
+                  <span>{{ producto.zona === 1 ? 'Venta Zonal' : 'Venta Normal' }}</span>
+                </div>
               </div>
+
 
               <!-- Información de Stock -->
               <div v-if="producto?.stock" class="stock-info">
-                <div class="stock-header">
-                  <h3>Disponibilidad</h3>
-                  <div class="stock-status" :class="stockStatusClass">
-                    <i :class="stockIcon"></i>
-                    <span>{{ stockStatus }}</span>
-                  </div>
-                </div>
-                
-                <div class="stock-details">
-                  <div class="stock-item">
-                    <span class="stock-label">Stock Total:</span>
-                    <span class="stock-value">{{ producto.stock.total || 0 }} unidades</span>
-                  </div>
-                  <div class="stock-item">
-                    <span class="stock-label">Disponible:</span>
-                    <span class="stock-value">{{ producto.stock.disponible || 0 }} unidades</span>
-                  </div>
-                  <div v-if="producto.stock.reservado > 0" class="stock-item">
-                    <span class="stock-label">Reservado:</span>
-                    <span class="stock-value">{{ producto.stock.reservado }} unidades</span>
-                  </div>
-                  <div v-if="producto.stock.fecha_actualizacion" class="stock-item">
-                    <span class="stock-label">Actualizado:</span>
-                    <span class="stock-value">{{ formatStockDate(producto.stock.fecha_actualizacion) }}</span>
-                  </div>
+                <div class="stock-item-simple">
+                  <span class="stock-label">
+                    <i class="fas fa-box"></i>
+                    Stock Disponible:
+                  </span>
+                  <span class="stock-value">{{ producto.stock.disponible || 0 }} unidades</span>
                 </div>
               </div>
 
@@ -205,6 +191,17 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { catalogo } from '@/stores/catalogo'
 
+// Props
+const props = defineProps({
+  producto: {
+    type: Object,
+    default: null
+  }
+})
+
+// Emits
+const emit = defineEmits(['cerrar'])
+
 const imagenSeleccionada = ref(0)
 const isZoomed = ref(false)
 const zoomStyle = ref({})
@@ -213,7 +210,9 @@ const imagenContainer = ref(null)
 const imagenMain = ref(null)
 
 // Producto actual
-const producto = computed(() => catalogo.state.productoSeleccionado)
+const producto = computed(() => {
+  return props.producto || catalogo.state.productoSeleccionado
+})
 
 // Imágenes del producto
 const imagenes = computed(() => {
@@ -261,54 +260,10 @@ const tieneEspecificaciones = computed(() => {
            producto.value.material)
 })
 
-// Computed properties para el stock
-const stockStatusClass = computed(() => {
-  if (!producto.value?.stock) return 'stock-unknown'
-  
-  if (producto.value.stock.disponible > 0) {
-    return producto.value.stock.disponible > 5 ? 'stock-high' : 'stock-low'
-  }
-  return 'stock-out'
-})
-
-const stockIcon = computed(() => {
-  if (!producto.value?.stock) return 'fas fa-question-circle'
-  
-  if (producto.value.stock.disponible > 0) {
-    return producto.value.stock.disponible > 5 ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'
-  }
-  return 'fas fa-times-circle'
-})
-
-const stockStatus = computed(() => {
-  if (!producto.value?.stock) return 'Stock no disponible'
-  
-  if (producto.value.stock.disponible > 0) {
-    return producto.value.stock.disponible > 5 ? 'En stock' : 'Últimas unidades disponibles'
-  }
-  return 'Producto agotado'
-})
-
-// Formatear fecha de actualización del stock
-const formatStockDate = (dateString) => {
-  if (!dateString) return 'No disponible'
-  
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (error) {
-    return 'Fecha inválida'
-  }
-}
 
 // Cerrar modal
 const cerrarModal = () => {
+  emit('cerrar')
   catalogo.cerrarModal()
 }
 
@@ -760,93 +715,64 @@ onUnmounted(() => {
   color: #9ca3af;
 }
 
-/* Estilos para información de stock */
+.meta-item.zona-item {
+  font-weight: 600;
+}
+
+.meta-item.zona-item:has(.fa-map-marker-alt) {
+  color: #059669;
+}
+
+.meta-item.zona-item:has(.fa-store) {
+  color: #1e40af;
+}
+
+.meta-item.zona-item .fa-map-marker-alt {
+  color: #10b981;
+}
+
+.meta-item.zona-item .fa-store {
+  color: #3b82f6;
+}
+
+
+/* Estilos para información de stock simplificada */
 .stock-info {
   background: #f8fafc;
   border-radius: 0.75rem;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
+  padding: 1rem;
+  margin: 1rem 0;
   border: 1px solid #e2e8f0;
 }
 
-.stock-header {
+.stock-item-simple {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-}
-
-.stock-header h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.stock-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-}
-
-.stock-status i {
-  font-size: 1rem;
-}
-
-.stock-status.stock-high {
-  background: #d1fae5;
-  color: #059669;
-  border: 1px solid #a7f3d0;
-}
-
-.stock-status.stock-low {
-  background: #fef3c7;
-  color: #d97706;
-  border: 1px solid #fde68a;
-}
-
-.stock-status.stock-out {
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
-}
-
-.stock-status.stock-unknown {
-  background: #f3f4f6;
-  color: #6b7280;
-  border: 1px solid #d1d5db;
-}
-
-.stock-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-.stock-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
   background: white;
   border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
 }
 
-.stock-label {
+.stock-item-simple .stock-label {
   font-size: 0.875rem;
   color: #6b7280;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.stock-value {
-  font-size: 0.875rem;
+.stock-item-simple .stock-label i {
+  color: #3b82f6;
+  font-size: 1rem;
+}
+
+.stock-item-simple .stock-value {
+  font-size: 1rem;
   color: #111827;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .descripcion h3,

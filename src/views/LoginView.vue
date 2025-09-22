@@ -96,7 +96,7 @@
 
         <!-- Footer -->
         <div class="card-footer text-center">
-          <p>¿No tienes una cuenta? <a href="#" class="link">Regístrate aquí</a></p>
+          <p>Acceso restringido para personal autorizado</p>
         </div>
       </div>
     </div>

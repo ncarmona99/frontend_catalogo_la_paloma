@@ -16,13 +16,13 @@ export const API_CONFIG = {
   RETRY_DELAY: 1000,
 }
 
-// Función helper para hacer requests a la API
+// Función helper para hacer requests a la API con renovación automática de tokens
 export async function apiCall(endpoint, options = {}) {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`
   console.log('🌐 API Call:', url)
   
-  // Obtener token del localStorage
-  const token = localStorage.getItem('token')
+  // Obtener token del sessionStorage
+  const accessToken = sessionStorage.getItem('accessToken')
   
   const config = {
     headers: {
@@ -39,8 +39,8 @@ export async function apiCall(endpoint, options = {}) {
   }
   
   // Agregar token de autorización si existe
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
 
   try {
@@ -49,6 +49,36 @@ export async function apiCall(endpoint, options = {}) {
     
     const data = await response.json()
     console.log('📦 Response data:', data)
+    
+    // Si el token ha expirado, intentar renovarlo
+    if (response.status === 401 && data.code === 'TokenExpiredError') {
+      console.log('🔄 Token expirado, intentando renovar...')
+      
+      // Importar auth store dinámicamente para evitar dependencias circulares
+      const { auth } = await import('@/stores/auth')
+      const refreshed = await auth.checkSession()
+      
+      if (refreshed) {
+        console.log('✅ Token renovado, reintentando request...')
+        // Reintentar el request con el nuevo token
+        const newToken = sessionStorage.getItem('accessToken')
+        config.headers.Authorization = `Bearer ${newToken}`
+        
+        const retryResponse = await fetch(url, config)
+        const retryData = await retryResponse.json()
+        
+        if (!retryResponse.ok) {
+          throw new Error(retryData.message || 'Error en el servidor')
+        }
+        
+        return retryData
+      } else {
+        // Si no se pudo renovar, limpiar sesión
+        console.log('❌ No se pudo renovar token, limpiando sesión')
+        auth.logout()
+        throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.')
+      }
+    }
     
     if (!response.ok) {
       throw new Error(data.message || 'Error en el servidor')

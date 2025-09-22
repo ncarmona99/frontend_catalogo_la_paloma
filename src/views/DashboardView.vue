@@ -21,10 +21,6 @@
             <div class="card-body">
               <div class="user-details">
                 <div class="detail-item">
-                  <span class="detail-label">ID:</span>
-                  <span class="detail-value">{{ auth.currentUser?.id }}</span>
-                </div>
-                <div class="detail-item">
                   <span class="detail-label">Usuario:</span>
                   <span class="detail-value">{{ auth.currentUser?.username }}</span>
                 </div>
@@ -41,6 +37,14 @@
                   </span>
                 </div>
               </div>
+              
+              <!-- Botón para cambiar contraseña -->
+              <div class="user-actions">
+                <button @click="showChangePasswordModal = true" class="btn btn-outline btn-sm">
+                  <i class="fas fa-key"></i>
+                  Cambiar Contraseña
+                </button>
+              </div>
             </div>
           </div>
 
@@ -49,14 +53,23 @@
         </div>
       </div>
     </main>
+
+    <!-- Modal para cambiar contraseña -->
+    <ChangePasswordModal 
+      :isVisible="showChangePasswordModal" 
+      @close="showChangePasswordModal = false" 
+    />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth } from '@/stores/auth'
+import ChangePasswordModal from '@/components/ChangePasswordModal.vue'
 import AdminNavbar from '@/components/AdminNavbar.vue'
+
+const showChangePasswordModal = ref(false)
 
 const router = useRouter()
 
@@ -123,6 +136,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.user-actions {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: center;
 }
 
 .detail-item {
