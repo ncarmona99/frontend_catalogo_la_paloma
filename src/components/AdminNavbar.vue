@@ -11,60 +11,69 @@
 
       <!-- Navegación principal -->
       <div class="nav-menu">
-        <router-link 
-          to="/dashboard" 
+        <router-link
+          to="/dashboard"
           class="nav-link"
           :class="{ active: $route.path === '/dashboard' }"
         >
           <i class="fas fa-tachometer-alt"></i>
           <span>Dashboard</span>
         </router-link>
-        
-        <router-link 
-          to="/admin/productos" 
+
+        <router-link
+          to="/admin/productos"
           class="nav-link"
           :class="{ active: $route.path.startsWith('/admin/productos') }"
         >
           <i class="fas fa-box"></i>
           <span>Productos</span>
         </router-link>
-        
-        <router-link 
-          to="/admin/categorias" 
+
+        <router-link
+          to="/admin/categorias"
           class="nav-link"
           :class="{ active: $route.path === '/admin/categorias' }"
         >
           <i class="fas fa-tags"></i>
           <span>Categorías</span>
         </router-link>
-        
-        <router-link 
-          to="/admin/marcas" 
+
+        <router-link
+          to="/admin/marcas"
           class="nav-link"
           :class="{ active: $route.path.startsWith('/admin/marcas') }"
         >
           <i class="fas fa-tag"></i>
           <span>Marcas</span>
         </router-link>
-        
-        <router-link 
-          to="/admin/temporadas" 
+
+        <router-link
+          to="/admin/temporadas"
           class="nav-link"
           :class="{ active: $route.path.startsWith('/admin/temporadas') }"
         >
           <i class="fas fa-calendar-alt"></i>
           <span>Temporadas</span>
         </router-link>
-        
-        
-        <router-link 
+
+        <router-link
           v-if="auth.currentUser?.rol?.toLowerCase() === 'administrador'"
-          to="/admin/usuarios" 
+          to="/admin/usuarios"
           class="nav-link"
           :class="{ active: $route.path === '/admin/usuarios' }"
         >
           <i class="fas fa-users"></i>
           <span>Usuarios</span>
+        </router-link>
+
+        <router-link
+          v-if="auth.currentUser?.rol?.toLowerCase() === 'administrador'"
+          to="/admin/auditoria"
+          class="nav-link"
+          :class="{ active: $route.path === '/admin/auditoria' }"
+        >
+          <i class="fas fa-clipboard-list"></i>
+          <span>Auditoría</span>
         </router-link>
       </div>
 
@@ -76,7 +85,7 @@
             <div class="user-role">{{ auth.currentUser?.rol }}</div>
           </div>
         </div>
-        
+
         <div class="user-actions">
           <button class="btn btn-ghost btn-sm" @click="handleLogout">
             <i class="fas fa-sign-out-alt"></i>
@@ -89,15 +98,15 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import { auth } from '@/stores/auth'
+import { useRouter } from "vue-router";
+import { auth } from "@/stores/auth";
 
-const router = useRouter()
+const router = useRouter();
 
 const handleLogout = () => {
-  auth.logout()
-  router.push('/login')
-}
+  auth.logout();
+  router.push("/login");
+};
 </script>
 
 <style scoped>
@@ -184,7 +193,6 @@ const handleLogout = () => {
   gap: 0.75rem;
 }
 
-
 .user-details {
   display: flex;
   flex-direction: column;
@@ -241,15 +249,15 @@ const handleLogout = () => {
   .container {
     padding: 0 0.5rem;
   }
-  
+
   .nav-menu {
     display: none;
   }
-  
+
   .user-details {
     display: none;
   }
-  
+
   .brand-link span {
     display: none;
   }

@@ -201,6 +201,141 @@
                 </div>
               </div>
             </div>
+
+            <!-- Sección de Enlace de Stock -->
+            <div class="form-section">
+              <h3 class="section-title">
+                <i class="fas fa-link"></i>
+                Enlace de Stock
+              </h3>
+              <p class="section-description">
+                Conecta este producto con un producto de la base de datos de
+                stock para obtener información de inventario en tiempo real.
+              </p>
+
+              <div class="form-grid">
+                <!-- Enlace actual -->
+                <div v-if="enlaceActivo" class="form-group form-group-full">
+                  <label class="form-label">Enlace Actual</label>
+                  <div class="current-link-card">
+                    <div class="link-info">
+                      <div class="link-details">
+                        <span class="link-code">{{
+                          enlaceActivo.codigo_stock
+                        }}</span>
+                        <span class="link-description">{{
+                          enlaceActivo.descripcion_stock
+                        }}</span>
+                      </div>
+                      <div class="link-actions">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-danger"
+                          @click="desactivarEnlace"
+                          :disabled="saving"
+                        >
+                          <i class="fas fa-unlink"></i>
+                          Desactivar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Selector de nuevo enlace -->
+                <div v-else class="form-group form-group-full">
+                  <label for="stock_search" class="form-label"
+                    >Buscar Producto de Stock</label
+                  >
+                  <div class="stock-search-container">
+                    <input
+                      id="stock_search"
+                      v-model="stockSearch"
+                      type="text"
+                      class="form-input"
+                      placeholder="Buscar por código o descripción..."
+                      @input="searchStockProducts"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-secondary"
+                      @click="searchStockProducts"
+                      :disabled="loadingStock"
+                    >
+                      <i v-if="loadingStock" class="fas fa-spinner fa-spin"></i>
+                      <i v-else class="fas fa-search"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Lista de productos de stock disponibles -->
+                <div
+                  v-if="productosStockDisponibles.length > 0"
+                  class="form-group form-group-full"
+                >
+                  <label class="form-label"
+                    >Productos de Stock Disponibles</label
+                  >
+                  <div class="stock-products-list">
+                    <div
+                      v-for="producto in productosStockDisponibles"
+                      :key="producto.codigo"
+                      class="stock-product-item"
+                      :class="{
+                        selected:
+                          selectedStockProduct?.codigo === producto.codigo,
+                      }"
+                      @click="selectStockProduct(producto)"
+                    >
+                      <div class="product-info">
+                        <div class="product-code">{{ producto.codigo }}</div>
+                        <div class="product-description">
+                          {{ producto.descripcion }}
+                        </div>
+                        <div class="product-details">
+                          <span class="stock-info"
+                            >Stock: {{ producto.stock_actual }}</span
+                          >
+                          <span class="price-info"
+                            >Precio: ${{
+                              producto.precio_venta?.toLocaleString()
+                            }}</span
+                          >
+                          <span v-if="producto.marca" class="brand-info">{{
+                            producto.marca
+                          }}</span>
+                        </div>
+                      </div>
+                      <div class="product-actions">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-primary"
+                          @click.stop="crearEnlaceStock(producto)"
+                          :disabled="saving"
+                        >
+                          <i class="fas fa-link"></i>
+                          Enlazar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Mensaje cuando no hay productos -->
+                <div
+                  v-else-if="stockSearch && !loadingStock"
+                  class="form-group form-group-full"
+                >
+                  <div class="no-results">
+                    <i class="fas fa-search"></i>
+                    <p>
+                      No se encontraron productos de stock con ese criterio de
+                      búsqueda.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
       </div>
@@ -225,6 +360,13 @@ const marcas = ref([]);
 const temporadas = ref([]);
 const tempTemporadaId = ref("");
 const producto = ref(null);
+
+// Variables para enlace de stock
+const enlaceActivo = ref(null);
+const stockSearch = ref("");
+const productosStockDisponibles = ref([]);
+const selectedStockProduct = ref(null);
+const loadingStock = ref(false);
 
 const formData = ref({
   codigo_producto: "",
@@ -304,6 +446,117 @@ const loadTemporadas = async () => {
   }
 };
 
+// Métodos para enlace de stock
+const loadEnlaceActivo = async () => {
+  if (!isEditing.value) return;
+
+  try {
+    const response = await apiCall(
+      `/api/stock-enlace/enlace/producto/${route.params.id}`
+    );
+    if (response.success && response.data) {
+      enlaceActivo.value = response.data;
+    }
+  } catch (error) {
+    console.error("Error cargando enlace activo:", error);
+  }
+};
+
+const searchStockProducts = async () => {
+  if (!stockSearch.value.trim()) {
+    productosStockDisponibles.value = [];
+    return;
+  }
+
+  loadingStock.value = true;
+  try {
+    const response = await apiCall(
+      `/api/stock-enlace/disponibles?busqueda=${encodeURIComponent(
+        stockSearch.value
+      )}&limite=20&excluirEnlazados=true`
+    );
+    if (response.success) {
+      productosStockDisponibles.value = response.data;
+    }
+  } catch (error) {
+    console.error("Error buscando productos de stock:", error);
+    productosStockDisponibles.value = [];
+  } finally {
+    loadingStock.value = false;
+  }
+};
+
+const selectStockProduct = (producto) => {
+  selectedStockProduct.value = producto;
+};
+
+const crearEnlaceStock = async (productoStock) => {
+  if (!isEditing.value) {
+    alert(
+      "Debes guardar el producto primero antes de crear un enlace de stock."
+    );
+    return;
+  }
+
+  saving.value = true;
+  try {
+    const response = await apiCall("/api/stock-enlace/enlace", {
+      method: "POST",
+      body: JSON.stringify({
+        producto_id: parseInt(route.params.id),
+        codigo_stock: productoStock.codigo,
+        descripcion_stock: productoStock.descripcion,
+      }),
+    });
+
+    if (response.success) {
+      // Recargar el enlace activo
+      await loadEnlaceActivo();
+      // Limpiar búsqueda
+      stockSearch.value = "";
+      productosStockDisponibles.value = [];
+      selectedStockProduct.value = null;
+
+      console.log("Enlace de stock creado exitosamente");
+    }
+  } catch (error) {
+    console.error("Error creando enlace de stock:", error);
+    alert("Error al crear el enlace de stock. Inténtalo de nuevo.");
+  } finally {
+    saving.value = false;
+  }
+};
+
+const desactivarEnlace = async () => {
+  if (!enlaceActivo.value) return;
+
+  if (
+    !confirm("¿Estás seguro de que quieres desactivar este enlace de stock?")
+  ) {
+    return;
+  }
+
+  saving.value = true;
+  try {
+    const response = await apiCall(
+      `/api/stock-enlace/enlace/${enlaceActivo.value.id}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (response.success) {
+      enlaceActivo.value = null;
+      console.log("Enlace de stock desactivado exitosamente");
+    }
+  } catch (error) {
+    console.error("Error desactivando enlace de stock:", error);
+    alert("Error al desactivar el enlace de stock. Inténtalo de nuevo.");
+  } finally {
+    saving.value = false;
+  }
+};
+
 const selectedTemporadasObjects = computed(() => {
   const set = new Set(formData.value.temporadas);
   return temporadas.value.filter((t) => set.has(t.id));
@@ -367,6 +620,7 @@ onMounted(() => {
   loadMarcas();
   loadTemporadas();
   loadProducto();
+  loadEnlaceActivo();
 });
 </script>
 
@@ -594,5 +848,150 @@ onMounted(() => {
   .product-form {
     padding: 1rem;
   }
+}
+
+/* Estilos para la sección de enlace de stock */
+.section-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.stock-search-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.stock-search-container .form-input {
+  flex: 1;
+}
+
+.current-link-card {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.link-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.link-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.link-code {
+  font-weight: 600;
+  color: #0c4a6e;
+  font-size: 0.875rem;
+}
+
+.link-description {
+  color: #0369a1;
+  font-size: 0.875rem;
+}
+
+.stock-products-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+}
+
+.stock-product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stock-product-item:last-child {
+  border-bottom: none;
+}
+
+.stock-product-item:hover {
+  background: #f9fafb;
+}
+
+.stock-product-item.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.product-info {
+  flex: 1;
+}
+
+.product-code {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.product-description {
+  color: #374151;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.product-details {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.product-details span {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
+
+.stock-info {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.price-info {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.brand-info {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.product-actions {
+  margin-left: 1rem;
+}
+
+.no-results {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.no-results i {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+.no-results p {
+  margin: 0;
+  font-size: 0.875rem;
 }
 </style>
