@@ -38,7 +38,7 @@ const router = createRouter({
       path: "/admin/temporadas",
       name: "AdminTemporadas",
       component: AdminTemporadasView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true },
     },
     {
       path: "/login",
@@ -69,7 +69,7 @@ const router = createRouter({
       path: "/admin/categorias",
       name: "AdminCategorias",
       component: AdminCategoriasView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true },
     },
     {
       path: "/admin/productos",
@@ -93,7 +93,7 @@ const router = createRouter({
       path: "/admin/imagenes",
       name: "AdminImagenes",
       component: AdminImagenesView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true },
     },
     {
       path: "/admin/usuarios",

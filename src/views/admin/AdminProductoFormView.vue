@@ -36,8 +36,35 @@
           </div>
         </div>
 
-        <!-- Formulario -->
-        <div class="form-container">
+        <!-- Mensaje de creación deshabilitada -->
+        <div v-if="!isEditing" class="disabled-creation-card">
+          <div class="disabled-content">
+            <div class="disabled-icon">
+              <i class="fas fa-info-circle"></i>
+            </div>
+            <div class="disabled-text">
+              <h3>Creación de Productos Deshabilitada</h3>
+              <p>
+                Los productos se crean automáticamente mediante
+                <strong>sincronización</strong>. No es posible crear productos
+                manualmente en este momento.
+              </p>
+              <p>
+                Para gestionar productos existentes, utiliza la opción de
+                <strong>editar</strong> desde la lista de productos.
+              </p>
+            </div>
+            <div class="disabled-actions">
+              <router-link to="/admin/productos" class="btn btn-primary">
+                <i class="fas fa-list"></i>
+                Ver Lista de Productos
+              </router-link>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulario (solo visible al editar) -->
+        <div v-if="isEditing" class="form-container">
           <form @submit.prevent="saveProducto" class="product-form">
             <!-- Información Básica -->
             <div class="form-section">
@@ -628,6 +655,53 @@ onMounted(() => {
 .admin-producto-form {
   min-height: 100vh;
   background: #f8fafc;
+}
+
+.disabled-creation-card {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.disabled-content {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.disabled-icon {
+  width: 5rem;
+  height: 5rem;
+  background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2rem;
+  color: white;
+  font-size: 2rem;
+}
+
+.disabled-text h3 {
+  margin: 0 0 1rem 0;
+  color: #d84315;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.disabled-text p {
+  margin: 0 0 1rem 0;
+  color: #424242;
+  line-height: 1.6;
+  font-size: 1rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.disabled-actions {
+  margin-top: 2rem;
 }
 
 .main-content {

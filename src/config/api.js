@@ -99,6 +99,21 @@ export function getApiUrl(endpoint) {
   return `${API_CONFIG.BASE_URL}${endpoint}`;
 }
 
+// Función para obtener la URL completa de una imagen
+export function getImageUrl(imageUrl) {
+  // Si ya es una URL completa, devolverla tal como está
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
+
+  // Si es una URL relativa, construir la URL completa
+  const baseUrl = API_CONFIG.BASE_URL.replace("/api", ""); // Quitar /api del final
+
+  // En producción, las imágenes se sirven directamente desde /images
+  // En desarrollo, también se sirven desde /images
+  return `${baseUrl}${imageUrl}`;
+}
+
 // Función para verificar si estamos en desarrollo
 export function isDevelopment() {
   return import.meta.env.VITE_APP_ENV === "development";

@@ -25,10 +25,33 @@
               <i v-else class="fas fa-sync-alt"></i>
               {{ syncing ? "Sincronizando..." : "Sincronizar Productos" }}
             </button>
-            <router-link to="/admin/productos/nuevo" class="btn btn-primary">
+            <!-- Botón de crear producto deshabilitado - Solo sincronización -->
+            <button
+              class="btn btn-primary"
+              disabled
+              title="Los productos se crean mediante sincronización"
+            >
               <i class="fas fa-plus"></i>
-              Nuevo Producto
-            </router-link>
+              Nuevo Producto (Solo Sincronización)
+            </button>
+          </div>
+        </div>
+
+        <!-- Mensaje informativo sobre sincronización -->
+        <div class="info-card">
+          <div class="info-content">
+            <div class="info-icon">
+              <i class="fas fa-info-circle"></i>
+            </div>
+            <div class="info-text">
+              <h4>Gestión de Productos</h4>
+              <p>
+                Los productos se crean y actualizan automáticamente mediante
+                <strong>sincronización</strong>. Puedes editar la información de
+                productos existentes, pero no crear nuevos productos
+                manualmente.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -327,6 +350,22 @@
                         v-if="sortField === 'estado' && sortOrder === 'desc'"
                       ></i>
                     </th>
+                    <th
+                      @click="sort('zona')"
+                      class="sortable"
+                      :class="getSortClass('zona')"
+                    >
+                      Venta Zonal
+                      <i class="fas fa-sort" v-if="sortField !== 'zona'"></i>
+                      <i
+                        class="fas fa-sort-up"
+                        v-if="sortField === 'zona' && sortOrder === 'asc'"
+                      ></i>
+                      <i
+                        class="fas fa-sort-down"
+                        v-if="sortField === 'zona' && sortOrder === 'desc'"
+                      ></i>
+                    </th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
@@ -340,12 +379,16 @@
                           @click="openImageModal(producto)"
                         >
                           <img
-                            :src="
-                              producto.imagenes[0]?.url ||
-                              '/images/placeholder-product.svg'
-                            "
+                            :src="getImageUrlWithLog(producto.imagenes[0]?.url)"
                             :alt="producto.descripcion"
                             @error="handleImageError"
+                            @load="
+                              () =>
+                                console.log(
+                                  '✅ Imagen cargada:',
+                                  producto.imagenes[0]?.url
+                                )
+                            "
                           />
                           <div class="image-overlay">
                             <i class="fas fa-images"></i>
@@ -432,6 +475,26 @@
                       >
                         {{ producto.estado }}
                       </span>
+                    </td>
+                    <td>
+                      <div class="zonal-indicator">
+                        <span
+                          v-if="producto.zona === 1"
+                          class="badge badge-zonal"
+                          title="Producto de venta zonal"
+                        >
+                          <i class="fas fa-map-marker-alt"></i>
+                          Zonal
+                        </span>
+                        <span
+                          v-else
+                          class="badge badge-no-zonal"
+                          title="Producto de venta no zonal"
+                        >
+                          <i class="fas fa-ban"></i>
+                          No Zonal
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <div class="action-buttons">
@@ -571,9 +634,13 @@
                 >
                   <div class="image-preview">
                     <img
-                      :src="imagen.url"
+                      :src="getImageUrlWithLog(imagen.url)"
                       :alt="imagen.alt_text"
                       @error="handleImageError"
+                      @load="
+                        () =>
+                          console.log('✅ Imagen modal cargada:', imagen.url)
+                      "
                     />
                     <div class="image-actions">
                       <button
@@ -839,6 +906,26 @@
                   <option value="SUSPENDIDO">Suspendido</option>
                 </select>
               </div>
+
+              <div class="form-group">
+                <label class="form-label">Venta Zonal</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      v-model="editFormData.zona"
+                      true-value="1"
+                      false-value="0"
+                      class="checkbox-input"
+                    />
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">
+                      <i class="fas fa-map-marker-alt"></i>
+                      Producto de venta zonal
+                    </span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </form>
@@ -1030,7 +1117,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import AdminNavbar from "@/components/AdminNavbar.vue";
-import { apiCall } from "@/config/api";
+import { apiCall, getImageUrl } from "@/config/api";
 
 const router = useRouter();
 
@@ -1086,6 +1173,7 @@ const editFormData = ref({
   familia_id: "",
   marca_id: "",
   estado: "ACTIVO",
+  zona: 0,
   temporadas: [],
 });
 
@@ -1157,8 +1245,25 @@ const loadProductos = async () => {
           codigo: p.codigo_producto,
           precio: p.valor_web,
           stock: p.stock_total,
+          zona: p.zona,
+          zona_raw: p,
+          imagenes: p.imagenes || [],
         }))
       );
+
+      // Verificar imágenes en productos
+      const productosConImagenes = response.data.filter(
+        (p) => p.imagenes && p.imagenes.length > 0
+      );
+      console.log("📸 Productos con imágenes:", productosConImagenes.length);
+      if (productosConImagenes.length > 0) {
+        console.log("📸 Primer producto con imágenes:", {
+          id: productosConImagenes[0].id,
+          codigo: productosConImagenes[0].codigo_producto,
+          imagenes: productosConImagenes[0].imagenes,
+        });
+      }
+
       productos.value = response.data || [];
       totalProductos.value = response.total || 0;
       totalPaginas.value = response.pagination?.totalPaginas || 0;
@@ -1337,7 +1442,21 @@ const formatStockDate = (dateString) => {
 };
 
 const handleImageError = (event) => {
+  console.log("🖼️ Error cargando imagen:", event.target.src);
+  console.log("🖼️ Cambiando a placeholder:", "/images/placeholder-product.svg");
   event.target.src = "/images/placeholder-product.svg";
+};
+
+// Función para obtener URL de imagen con logs
+const getImageUrlWithLog = (imageUrl) => {
+  console.log("🔍 getImageUrlWithLog recibió:", imageUrl);
+  if (!imageUrl) {
+    console.log("⚠️ No hay imageUrl, usando placeholder");
+    return "/images/placeholder-product.svg";
+  }
+  const url = getImageUrl(imageUrl);
+  console.log("🖼️ URL construida:", url);
+  return url;
 };
 
 // Funciones de gestión de imágenes
@@ -1461,6 +1580,10 @@ const deleteImage = async (imagen) => {
 
 const reloadProductImages = async () => {
   try {
+    console.log(
+      "🔄 Recargando imágenes para producto:",
+      selectedProduct.value.id
+    );
     // Buscar el producto actualizado en la lista
     const productoActualizado = productos.value.find(
       (p) => p.id === selectedProduct.value.id
@@ -1470,11 +1593,21 @@ const reloadProductImages = async () => {
       const response = await apiCall(
         `/catalogo/productos/${selectedProduct.value.id}`
       );
+      console.log("📡 Respuesta de recarga:", response);
       if (response.success && response.data) {
+        console.log("📸 Imágenes recibidas:", response.data.imagenes);
         // Actualizar las imágenes del producto en la lista
         productoActualizado.imagenes = response.data.imagenes || [];
         // Actualizar el producto seleccionado en el modal
         selectedProduct.value.imagenes = response.data.imagenes || [];
+        console.log(
+          "✅ Imágenes actualizadas en producto:",
+          productoActualizado.imagenes
+        );
+        console.log(
+          "✅ Imágenes actualizadas en selectedProduct:",
+          selectedProduct.value.imagenes
+        );
       }
     }
   } catch (error) {
@@ -1494,6 +1627,7 @@ const openEditModal = async (producto) => {
     familia_id: producto.familia_id || "",
     marca_id: producto.marca_id || "",
     estado: producto.estado || "ACTIVO",
+    zona: producto.zona || 0,
     temporadas: producto.temporadas?.map((t) => t.id) || [],
   };
 
@@ -1514,6 +1648,7 @@ const closeEditModal = () => {
     familia_id: "",
     marca_id: "",
     estado: "ACTIVO",
+    zona: 0,
     temporadas: [],
   };
 };
@@ -1713,6 +1848,48 @@ onMounted(() => {
   margin: 0;
   color: #6b7280;
   font-size: 1.125rem;
+}
+
+.info-card {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  border: 1px solid #bbdefb;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.info-content {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+  gap: 1rem;
+}
+
+.info-icon {
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  background: #2196f3;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+}
+
+.info-text h4 {
+  margin: 0 0 0.5rem 0;
+  color: #1976d2;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.info-text p {
+  margin: 0;
+  color: #424242;
+  line-height: 1.5;
+  font-size: 0.95rem;
 }
 
 .filters-card {
@@ -2125,6 +2302,90 @@ onMounted(() => {
   background: transparent;
   color: #6b7280;
   border: 1px solid #d1d5db;
+}
+
+.badge-zonal {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.badge-no-zonal {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+.zonal-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.zonal-indicator .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+}
+
+.checkbox-input {
+  display: none;
+}
+
+.checkbox-custom {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #d1d5db;
+  border-radius: 0.25rem;
+  background: white;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.checkbox-input:checked + .checkbox-custom {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.checkbox-input:checked + .checkbox-custom::after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: bold;
+}
+
+.checkbox-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-text i {
+  color: #6b7280;
+}
+
+.checkbox-input:checked ~ .checkbox-text i {
+  color: #3b82f6;
 }
 
 .text-muted {
