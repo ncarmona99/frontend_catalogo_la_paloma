@@ -1,30 +1,10 @@
 <template>
   <div class="search-filters">
-    <!-- Buscador -->
-    <div class="search-container">
-      <i class="fas fa-search search-icon"></i>
-      <input
-        v-model="busquedaLocal"
-        type="text"
-        class="search-input"
-        placeholder="Buscar productos..."
-        @input="onSearchInput"
-      />
-      <button
-        v-if="busquedaLocal"
-        class="search-clear"
-        @click="limpiarBusqueda"
-        title="Limpiar búsqueda"
-      >
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-
     <!-- Filtros -->
     <div class="filtros-container">
       <div class="filtros-header">
         <h3 class="filtros-titulo">
-          Filtros 
+          Filtros
           <span v-if="catalogo.totalFiltrosActivos > 0" class="filtros-count">
             ({{ catalogo.totalFiltrosActivos }})
           </span>
@@ -34,14 +14,16 @@
           @click="mostrarFiltros = !mostrarFiltros"
           :title="mostrarFiltros ? 'Ocultar filtros' : 'Mostrar filtros'"
         >
-          <i :class="mostrarFiltros ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+          <i
+            :class="
+              mostrarFiltros ? 'fas fa-chevron-up' : 'fas fa-chevron-down'
+            "
+          ></i>
         </button>
       </div>
 
       <transition name="slide-up">
         <div v-show="mostrarFiltros" class="filtros-content">
-
-
           <!-- Categoría -->
           <div class="filtro-grupo">
             <label class="filtro-label">Categoría</label>
@@ -126,8 +108,6 @@
               <option value="sin_stock">Solo sin Stock</option>
             </select>
           </div>
-
-
         </div>
       </transition>
     </div>
@@ -149,94 +129,79 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { catalogo } from '@/stores/catalogo'
+import { ref, onMounted, watch } from "vue";
+import { catalogo } from "@/stores/catalogo";
 
 // Props
 const props = defineProps({
   showResultsInfo: {
     type: Boolean,
-    default: true
-  }
-})
+    default: true,
+  },
+});
 
-const busquedaLocal = ref('')
 const filtrosLocales = ref({
-  familia: '',
-  marca: '',
-  temporada: '',
-  zona: '',
-  stock: ''
-})
+  familia: "",
+  marca: "",
+  temporada: "",
+  zona: "",
+  stock: "",
+});
 
-const mostrarFiltros = ref(false)
-let searchTimeout = null
+const mostrarFiltros = ref(false);
 
 // Sincronizar con el store al montar
 onMounted(() => {
-  busquedaLocal.value = catalogo.state.filtros.busqueda
   filtrosLocales.value = {
-    familia: catalogo.state.filtros.familia || '',
-    marca: catalogo.state.filtros.marca || '',
-    temporada: catalogo.state.filtros.temporada || '',
-    zona: catalogo.state.filtros.zona || '',
-    stock: catalogo.state.filtros.stock || ''
-  }
-})
-
-// Búsqueda con debounce
-const onSearchInput = () => {
-  clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    catalogo.buscarConURL(busquedaLocal.value)
-  }, 300)
-}
-
-// Limpiar búsqueda
-const limpiarBusqueda = () => {
-  busquedaLocal.value = ''
-  catalogo.buscarConURL('')
-}
+    familia: catalogo.state.filtros.familia || "",
+    marca: catalogo.state.filtros.marca || "",
+    temporada: catalogo.state.filtros.temporada || "",
+    zona: catalogo.state.filtros.zona || "",
+    stock: catalogo.state.filtros.stock || "",
+  };
+});
 
 // Aplicar filtro individual
 const aplicarFiltro = (tipo, valor) => {
-  let valorProcesado = valor || null
-  
+  let valorProcesado = valor || null;
+
   // Convertir IDs a números
-  if ((tipo === 'familia' || tipo === 'marca' || tipo === 'temporada') && valor) {
-    valorProcesado = parseInt(valor)
+  if (
+    (tipo === "familia" || tipo === "marca" || tipo === "temporada") &&
+    valor
+  ) {
+    valorProcesado = parseInt(valor);
   }
-  
-  catalogo.aplicarFiltroConURL(tipo, valorProcesado)
-}
+
+  catalogo.aplicarFiltroConURL(tipo, valorProcesado);
+};
 
 // Limpiar todos los filtros
 const limpiarTodosFiltros = () => {
-  busquedaLocal.value = ''
   filtrosLocales.value = {
-    familia: '',
-    marca: '',
-    temporada: '',
-    zona: '',
-    stock: ''
-  }
-  catalogo.limpiarFiltrosConURL()
-}
+    familia: "",
+    marca: "",
+    temporada: "",
+    zona: "",
+    stock: "",
+  };
+  catalogo.limpiarFiltrosConURL();
+};
 
 // Auto-expandir filtros (siempre abierto en sidebar)
 const checkScreenSize = () => {
   // En el sidebar, los filtros siempre están expandidos
   if (props.showResultsInfo === false) {
-    mostrarFiltros.value = true
+    mostrarFiltros.value = true;
   } else {
-    mostrarFiltros.value = window.innerWidth >= 1024
+    mostrarFiltros.value = window.innerWidth >= 1024;
   }
-}
+};
 
 onMounted(() => {
-  checkScreenSize()
-  window.addEventListener('resize', checkScreenSize)
-})
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+});
 </script>
 
 <style scoped>

@@ -1,8 +1,12 @@
 <template>
   <div class="catalogo-view">
     <!-- Sidebar -->
-    <div class="sidebar-overlay" :class="{ 'active': sidebarOpen }" @click="closeSidebar"></div>
-    <aside class="sidebar" :class="{ 'open': sidebarOpen }" ref="sidebar">
+    <div
+      class="sidebar-overlay"
+      :class="{ active: sidebarOpen }"
+      @click="closeSidebar"
+    ></div>
+    <aside class="sidebar" :class="{ open: sidebarOpen }" ref="sidebar">
       <!-- Logo y título -->
       <div class="sidebar-header">
         <div class="logo-section">
@@ -14,34 +18,41 @@
           </h2>
         </div>
       </div>
-      
+
       <!-- Administración -->
       <div class="sidebar-admin">
-        <a href="/login" target="_blank" rel="noopener noreferrer" class="admin-link">
+        <a
+          href="/login"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="admin-link"
+        >
           <i class="fas fa-cog"></i>
           Administración
         </a>
       </div>
-      
+
       <!-- Filtros de búsqueda -->
       <div class="sidebar-filters">
-        <SearchFilters 
-          :show-results-info="false"
-        />
+        <SearchFilters :show-results-info="false" />
       </div>
     </aside>
 
-    <!-- Header simplificado -->
+    <!-- Header con buscador -->
     <header class="catalogo-header">
       <div class="container">
         <div class="header-content">
           <!-- Hamburger button -->
-          <button class="hamburger-btn" @click="toggleSidebar" :class="{ 'active': sidebarOpen }">
+          <button
+            class="hamburger-btn"
+            @click="toggleSidebar"
+            :class="{ active: sidebarOpen }"
+          >
             <span></span>
             <span></span>
             <span></span>
           </button>
-          
+
           <!-- Logo y título -->
           <div class="header-logo-section">
             <img src="@/assets/logo.png" alt="La Paloma" class="header-logo" />
@@ -51,6 +62,50 @@
               {{ catalogo.temporadaActiva.nombre }}
             </h2>
           </div>
+
+          <!-- Buscador en el navbar (desktop) -->
+          <div class="header-search-container desktop-search">
+            <div class="search-container">
+              <i class="fas fa-search search-icon"></i>
+              <input
+                v-model="busquedaLocal"
+                type="text"
+                class="search-input"
+                placeholder="Buscar productos..."
+                @input="onSearchInput"
+              />
+              <button
+                v-if="busquedaLocal"
+                class="search-clear"
+                @click="limpiarBusqueda"
+                title="Limpiar búsqueda"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buscador móvil (debajo del título) -->
+        <div class="mobile-search-container">
+          <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input
+              v-model="busquedaLocal"
+              type="text"
+              class="search-input"
+              placeholder="Buscar productos..."
+              @input="onSearchInput"
+            />
+            <button
+              v-if="busquedaLocal"
+              class="search-clear"
+              @click="limpiarBusqueda"
+              title="Limpiar búsqueda"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -58,16 +113,20 @@
     <!-- Contenido principal -->
     <main class="catalogo-main" :class="{ 'sidebar-open': sidebarOpen }">
       <div class="container">
-
         <!-- Estado de carga inicial -->
-        <div v-if="catalogo.state.loading && catalogo.productos.length === 0" class="loading-state">
+        <div
+          v-if="catalogo.state.loading && catalogo.productos.length === 0"
+          class="loading-state"
+        >
           <div class="spinner"></div>
           <p>Cargando productos...</p>
         </div>
 
         <!-- Lista de productos -->
-        <div v-else-if="catalogo.productos.length > 0" class="productos-container">
-
+        <div
+          v-else-if="catalogo.productos.length > 0"
+          class="productos-container"
+        >
           <div class="productos-grid">
             <ProductCard
               v-for="producto in catalogo.productos"
@@ -77,10 +136,15 @@
             />
           </div>
 
-
-
           <!-- Indicador de carga sutil (solo si la carga toma más de 1 segundo) -->
-          <div v-if="catalogo.state.loading && catalogo.productos.length > 0 && catalogo.loadingStartTime" class="loading-more-indicator">
+          <div
+            v-if="
+              catalogo.state.loading &&
+              catalogo.productos.length > 0 &&
+              catalogo.loadingStartTime
+            "
+            class="loading-more-indicator"
+          >
             <div class="loading-spinner-small"></div>
             <p>Cargando más productos...</p>
           </div>
@@ -132,252 +196,300 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { catalogo } from '@/stores/catalogo'
-import SearchFilters from '@/components/SearchFilters.vue'
-import ProductCard from '@/components/ProductCard.vue'
-import ProductModal from '@/components/ProductModal.vue'
-import Pagination from '@/components/Pagination.vue'
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { catalogo } from "@/stores/catalogo";
+import SearchFilters from "@/components/SearchFilters.vue";
+import ProductCard from "@/components/ProductCard.vue";
+import ProductModal from "@/components/ProductModal.vue";
+import Pagination from "@/components/Pagination.vue";
 
 // Props para recibir filtros de la URL
 const props = defineProps({
   busqueda: {
     type: String,
-    default: ''
+    default: "",
   },
   familia: {
     type: Number,
-    default: null
+    default: null,
   },
   marca: {
     type: Number,
-    default: null
+    default: null,
   },
   temporada: {
     type: Number,
-    default: null
+    default: null,
   },
   zona: {
     type: Number,
-    default: null
+    default: null,
   },
   stock: {
     type: String,
-    default: ''
-  }
-})
+    default: "",
+  },
+});
 
 // Estado del modal
-const productoSeleccionado = ref(null)
+const productoSeleccionado = ref(null);
 
 // Estado del sidebar (inicia cerrado en todos los dispositivos)
-const sidebarOpen = ref(false)
-const sidebar = ref(null)
+const sidebarOpen = ref(false);
+const sidebar = ref(null);
 
 // Estado del scroll
-const showScrollTop = ref(false)
-const scrollTimeout = ref(null)
+const showScrollTop = ref(false);
+const scrollTimeout = ref(null);
 
 // Estado de carga del modal
-const modalLoading = ref(false)
+const modalLoading = ref(false);
+
+// Estado del buscador en el navbar
+const busquedaLocal = ref("");
+let searchTimeout = null;
 
 // Computed
-const productos = computed(() => catalogo.productos)
+const productos = computed(() => catalogo.productos);
 
 // Métodos
 const abrirModal = async (producto) => {
   // Mostrar loading inmediatamente
-  modalLoading.value = true
-  
+  modalLoading.value = true;
+
   try {
     // El store ya maneja la carga y actualización del producto
-    await catalogo.abrirModal(producto.id)
+    await catalogo.abrirModal(producto.id);
     // El producto ya está disponible en catalogo.state.productoSeleccionado
-    productoSeleccionado.value = catalogo.state.productoSeleccionado
+    productoSeleccionado.value = catalogo.state.productoSeleccionado;
   } catch (error) {
-    console.error('Error al cargar el producto:', error)
+    console.error("Error al cargar el producto:", error);
     // En caso de error, asegurar que el loading se oculte
   } finally {
     // Ocultar loading
-    modalLoading.value = false
+    modalLoading.value = false;
   }
-}
+};
 
 const cerrarModal = () => {
-  productoSeleccionado.value = null
-  modalLoading.value = false // Asegurar que el loading se oculte
-}
+  productoSeleccionado.value = null;
+  modalLoading.value = false; // Asegurar que el loading se oculte
+};
 
 // Watcher para cerrar el loading cuando el modal se cierre desde el store
-watch(() => catalogo.state.modalAbierto, (isOpen) => {
-  if (!isOpen) {
-    modalLoading.value = false
-    productoSeleccionado.value = null
+watch(
+  () => catalogo.state.modalAbierto,
+  (isOpen) => {
+    if (!isOpen) {
+      modalLoading.value = false;
+      productoSeleccionado.value = null;
+    }
   }
-})
+);
 
 const limpiarFiltros = () => {
-  catalogo.limpiarFiltrosConURL()
-}
+  catalogo.limpiarFiltrosConURL();
+};
+
+// Métodos del buscador en el navbar
+const onSearchInput = () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    catalogo.buscarConURL(busquedaLocal.value);
+  }, 300);
+};
+
+const limpiarBusqueda = () => {
+  busquedaLocal.value = "";
+  catalogo.buscarConURL("");
+};
 
 // Watcher para detectar cambios en los props (filtros de URL)
-watch(() => [props.busqueda, props.familia, props.marca, props.temporada, props.zona, props.stock], () => {
-  console.log('🔄 Detectados cambios en filtros de URL:', {
-    busqueda: props.busqueda,
-    familia: props.familia,
-    marca: props.marca,
-    temporada: props.temporada,
-    zona: props.zona,
-    stock: props.stock
-  })
-  
-  // Aplicar filtros desde la URL
-  catalogo.aplicarFiltrosDesdeURL({
-    busqueda: props.busqueda,
-    familia: props.familia,
-    marca: props.marca,
-    temporada: props.temporada,
-    zona: props.zona,
-    stock: props.stock
-  })
-}, { immediate: true })
+watch(
+  () => [
+    props.busqueda,
+    props.familia,
+    props.marca,
+    props.temporada,
+    props.zona,
+    props.stock,
+  ],
+  () => {
+    console.log("🔄 Detectados cambios en filtros de URL:", {
+      busqueda: props.busqueda,
+      familia: props.familia,
+      marca: props.marca,
+      temporada: props.temporada,
+      zona: props.zona,
+      stock: props.stock,
+    });
+
+    // Aplicar filtros desde la URL
+    catalogo.aplicarFiltrosDesdeURL({
+      busqueda: props.busqueda,
+      familia: props.familia,
+      marca: props.marca,
+      temporada: props.temporada,
+      zona: props.zona,
+      stock: props.stock,
+    });
+  },
+  { immediate: true }
+);
+
+// Sincronizar el buscador con los filtros de URL
+watch(
+  () => props.busqueda,
+  (nuevaBusqueda) => {
+    busquedaLocal.value = nuevaBusqueda || "";
+  },
+  { immediate: true }
+);
 
 // Métodos del sidebar
 const toggleSidebar = () => {
-  sidebarOpen.value = !sidebarOpen.value
-}
+  sidebarOpen.value = !sidebarOpen.value;
+};
 
 const closeSidebar = () => {
-  sidebarOpen.value = false
-}
+  sidebarOpen.value = false;
+};
 
 const openSidebar = () => {
-  sidebarOpen.value = true
-}
+  sidebarOpen.value = true;
+};
 
 // Funcionalidad de deslizar para móviles
-let touchStartX = 0
-let touchStartY = 0
-let isDragging = false
+let touchStartX = 0;
+let touchStartY = 0;
+let isDragging = false;
 
 const handleTouchStart = (e) => {
-  touchStartX = e.touches[0].clientX
-  touchStartY = e.touches[0].clientY
-  isDragging = false
-}
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  isDragging = false;
+};
 
 const handleTouchMove = (e) => {
-  if (!touchStartX) return
-  
-  const touchCurrentX = e.touches[0].clientX
-  const touchCurrentY = e.touches[0].clientY
-  const deltaX = touchCurrentX - touchStartX
-  const deltaY = touchCurrentY - touchStartY
-  
+  if (!touchStartX) return;
+
+  const touchCurrentX = e.touches[0].clientX;
+  const touchCurrentY = e.touches[0].clientY;
+  const deltaX = touchCurrentX - touchStartX;
+  const deltaY = touchCurrentY - touchStartY;
+
   // Solo procesar si el movimiento es principalmente horizontal
   if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30) {
-    isDragging = true
-    
+    isDragging = true;
+
     // Deslizar hacia la derecha desde el borde izquierdo para abrir
     if (deltaX > 50 && touchStartX < 50 && !sidebarOpen.value) {
-      openSidebar()
+      openSidebar();
     }
     // Deslizar hacia la izquierda para cerrar
     else if (deltaX < -50 && sidebarOpen.value) {
-      closeSidebar()
+      closeSidebar();
     }
   }
-}
+};
 
 const handleTouchEnd = () => {
-  touchStartX = 0
-  touchStartY = 0
-  isDragging = false
-}
+  touchStartX = 0;
+  touchStartY = 0;
+  isDragging = false;
+};
 
 const handleScroll = () => {
-  showScrollTop.value = window.scrollY > 300
-  
+  showScrollTop.value = window.scrollY > 300;
+
   // Scroll infinito proactivo - cargar más productos ANTES de llegar al final
-  const scrollPosition = window.scrollY + window.innerHeight
-  const documentHeight = document.documentElement.scrollHeight
-  
+  const scrollPosition = window.scrollY + window.innerHeight;
+  const documentHeight = document.documentElement.scrollHeight;
+
   // Calcular cuántos productos están visibles actualmente
-  const productosVisibles = Math.ceil((scrollPosition / documentHeight) * catalogo.productos.length)
-  const productosRestantes = catalogo.productos.length - productosVisibles
-  
+  const productosVisibles = Math.ceil(
+    (scrollPosition / documentHeight) * catalogo.productos.length
+  );
+  const productosRestantes = catalogo.productos.length - productosVisibles;
+
   // Cargar más productos cuando queden menos de 10 productos por ver
   // o cuando esté al 70% del scroll
-  const shouldLoadMore = (
-    (productosRestantes <= 10 && catalogo.state.paginacion.hasMore) ||
-    (scrollPosition >= documentHeight * 0.7 && catalogo.state.paginacion.hasMore)
-  ) && !catalogo.state.loading
-  
+  const shouldLoadMore =
+    ((productosRestantes <= 10 && catalogo.state.paginacion.hasMore) ||
+      (scrollPosition >= documentHeight * 0.7 &&
+        catalogo.state.paginacion.hasMore)) &&
+    !catalogo.state.loading;
+
   if (shouldLoadMore) {
     // Evitar múltiples llamadas con debounce
     if (scrollTimeout.value) {
-      clearTimeout(scrollTimeout.value)
+      clearTimeout(scrollTimeout.value);
     }
-    
+
     scrollTimeout.value = setTimeout(() => {
-      console.log('🔄 Scroll infinito proactivo: Cargando más productos...')
-      console.log('📊 Estado actual:', {
+      console.log("🔄 Scroll infinito proactivo: Cargando más productos...");
+      console.log("📊 Estado actual:", {
         productosCargados: catalogo.productos.length,
         paginaActual: catalogo.state.paginacion.pagina,
         hasMore: catalogo.state.paginacion.hasMore,
-        total: catalogo.state.paginacion.total
-      })
-      catalogo.cargarMasProductos()
-    }, 200)
+        total: catalogo.state.paginacion.total,
+      });
+      catalogo.cargarMasProductos();
+    }, 200);
   }
-}
+};
 
 const scrollToTop = () => {
   window.scrollTo({
     top: 0,
-    behavior: 'smooth'
-  })
-}
+    behavior: "smooth",
+  });
+};
 
 // Lifecycle
 onMounted(async () => {
-  console.log('🚀 CatalogoView montada')
-  
+  console.log("🚀 CatalogoView montada");
+
   // Agregar listeners
-  window.addEventListener('scroll', handleScroll)
-  document.addEventListener('touchstart', handleTouchStart, { passive: true })
-  document.addEventListener('touchmove', handleTouchMove, { passive: true })
-  document.addEventListener('touchend', handleTouchEnd, { passive: true })
-  
+  window.addEventListener("scroll", handleScroll);
+  document.addEventListener("touchstart", handleTouchStart, { passive: true });
+  document.addEventListener("touchmove", handleTouchMove, { passive: true });
+  document.addEventListener("touchend", handleTouchEnd, { passive: true });
+
   // Cerrar sidebar al hacer clic fuera en desktop
-  document.addEventListener('click', (e) => {
-    if (sidebarOpen.value && sidebar.value && !sidebar.value.contains(e.target) && !e.target.closest('.hamburger-btn')) {
-      closeSidebar()
+  document.addEventListener("click", (e) => {
+    if (
+      sidebarOpen.value &&
+      sidebar.value &&
+      !sidebar.value.contains(e.target) &&
+      !e.target.closest(".hamburger-btn")
+    ) {
+      closeSidebar();
     }
-  })
-  
+  });
+
   try {
     // Inicializar catálogo
-    console.log('📡 Inicializando catálogo...')
-    await catalogo.init()
-    console.log('✅ Catálogo inicializado')
+    console.log("📡 Inicializando catálogo...");
+    await catalogo.init();
+    console.log("✅ Catálogo inicializado");
   } catch (error) {
-    console.error('❌ Error inicializando catálogo:', error)
+    console.error("❌ Error inicializando catálogo:", error);
   }
-})
+});
 
 onUnmounted(() => {
   // Remover listeners
-  window.removeEventListener('scroll', handleScroll)
-  document.removeEventListener('touchstart', handleTouchStart)
-  document.removeEventListener('touchmove', handleTouchMove)
-  document.removeEventListener('touchend', handleTouchEnd)
-  
+  window.removeEventListener("scroll", handleScroll);
+  document.removeEventListener("touchstart", handleTouchStart);
+  document.removeEventListener("touchmove", handleTouchMove);
+  document.removeEventListener("touchend", handleTouchEnd);
+
   // Limpiar timeout
   if (scrollTimeout.value) {
-    clearTimeout(scrollTimeout.value)
+    clearTimeout(scrollTimeout.value);
   }
-})
+});
 </script>
 
 <style scoped>
@@ -473,6 +585,86 @@ onUnmounted(() => {
   border: 1px solid #a7f3d0;
 }
 
+/* Buscador en el navbar */
+.header-search-container {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+/* Buscador móvil (oculto por defecto) */
+.mobile-search-container {
+  display: none;
+  padding: 1rem 0;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 1rem;
+}
+
+/* Estilos compartidos para ambos buscadores */
+.header-search-container .search-container,
+.mobile-search-container .search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  min-width: 300px;
+  transition: all 0.3s ease;
+}
+
+.header-search-container .search-container:focus-within,
+.mobile-search-container .search-container:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.header-search-container .search-icon,
+.mobile-search-container .search-icon {
+  color: #6b7280;
+  margin-right: 0.5rem;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.header-search-container .search-input,
+.mobile-search-container .search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 1rem;
+  color: #374151;
+  padding: 0.25rem 0 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.header-search-container .search-input::placeholder,
+.mobile-search-container .search-input::placeholder {
+  color: #9ca3af;
+}
+
+.header-search-container .search-clear,
+.mobile-search-container .search-clear {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+  margin-left: 0.5rem;
+}
+
+.header-search-container .search-clear:hover,
+.mobile-search-container .search-clear:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
 .sidebar-admin {
   margin-bottom: 2rem;
 }
@@ -562,6 +754,7 @@ onUnmounted(() => {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 1;
 }
 
 .header-logo {
@@ -642,8 +835,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .estado-vacio {
@@ -783,8 +980,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Botón scroll to top */
@@ -844,52 +1045,52 @@ onUnmounted(() => {
     box-shadow: 2px 0 15px rgba(0, 0, 0, 0.15);
     padding: 2rem;
   }
-  
+
   .sidebar.open {
     transform: translateX(0);
   }
-  
+
   .catalogo-main.sidebar-open {
     margin-left: 350px;
   }
-  
+
   .hamburger-btn {
     display: flex;
   }
-  
+
   .sidebar-overlay.active {
     background: rgba(0, 0, 0, 0.3);
   }
-  
+
   .sidebar-header {
     margin-bottom: 2.5rem;
   }
-  
+
   .sidebar-header .catalogo-titulo {
     font-size: 1.375rem;
   }
-  
+
   .season-title {
     font-size: 1.125rem;
   }
-  
+
   .header-season-title {
     font-size: 1.25rem;
   }
-  
+
   .sidebar-admin {
     margin-bottom: 2.5rem;
   }
-  
+
   .sidebar-filters :deep(.filtros-header) {
     margin-bottom: 1.5rem;
   }
-  
+
   .sidebar-filters :deep(.search-input) {
     font-size: 1rem;
     padding: 1rem 1rem 1rem 3rem;
   }
-  
+
   .sidebar-filters :deep(.search-icon) {
     left: 1rem;
     font-size: 1.125rem;
@@ -906,41 +1107,96 @@ onUnmounted(() => {
   .header-title {
     font-size: 1.25rem;
   }
-  
+
   .header-logo {
     height: 35px;
   }
-  
+
   .header-logo-section {
     gap: 0.75rem;
+    position: static;
+    transform: none;
+    left: auto;
+    justify-content: center;
   }
-  
+
+  /* Ocultar buscador desktop en móviles */
+  .desktop-search {
+    display: none;
+  }
+
+  /* Mostrar buscador móvil */
+  .mobile-search-container {
+    display: block;
+  }
+
+  .mobile-search-container .search-container {
+    min-width: 100%;
+    max-width: 100%;
+  }
+
   .productos-grid {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1rem;
   }
-  
+
   .scroll-top-btn {
     bottom: 1rem;
     right: 1rem;
     width: 45px;
     height: 45px;
   }
-  
+
   .sidebar {
     width: 260px;
   }
-  
+
   .sidebar-header .catalogo-titulo {
     font-size: 1.1rem;
   }
-  
+
   .season-title {
     font-size: 0.875rem;
   }
-  
+
   .header-season-title {
     font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-logo {
+    height: 30px;
+  }
+
+  .header-title {
+    font-size: 1rem;
+  }
+
+  .mobile-search-container .search-container {
+    padding: 0.375rem 0.75rem;
+  }
+
+  .mobile-search-container .search-input {
+    font-size: 0.875rem;
+  }
+
+  .mobile-search-container .search-icon {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .header-logo {
+    height: 25px;
+  }
+
+  .header-title {
+    font-size: 0.875rem;
+  }
+
+  .mobile-search-container .search-container {
+    padding: 0.25rem 0.5rem;
   }
 }
 </style>
